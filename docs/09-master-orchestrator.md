@@ -1,0 +1,173 @@
+# 09 · Master Orchestrator
+
+> 整个 Teams 掼蛋项目的"总指挥": 把九位 Agent 的产物拼成一个能演进的工程体系。本文档负责 **目录 / 模块依赖 / 节奏 / 看板**；规范细节在 [10-conventions.md](./10-conventions.md)。
+
+## §1 目录全景
+
+```
+teams-guandan/
+├── apps/
+│   ├── teams-tab/            # Next.js 15 + Fluent UI（玩家入口）
+│   ├── teams-bot/            # Bot Framework Adapter（群命令 / Adaptive Card）
+│   ├── game-server/          # NestJS + Socket.IO + Prisma（实时对战核心）
+│   ├── admin-panel/          # Next.js 管理 / 裁判后台（Phase 3+）
+│   └── ai-service/           # Python FastAPI（AI 评估 / LLM Agent，独立部署）
+├── packages/
+│   ├── game-engine/          # 纯函数规则引擎（55 测试）
+│   ├── shared-types/         # 跨服务领域类型
+│   ├── socket-protocol/      # WebSocket 事件 + payload 契约
+│   ├── adaptive-cards/       # Teams Adaptive Card JSON 模板
+│   └── teams-sdk-wrapper/    # @microsoft/teams-js 适配层
+├── infrastructure/
+│   ├── docker/               # Compose + nginx + Prometheus/Grafana/Loki/OTel 配置
+│   ├── k8s/                  # K8s manifests（namespace/deploy/HPA/PDB/ingress）
+│   ├── bicep/, terraform/    # IaC（占位，Phase 2 完善）
+│   └── azure/                # AppSource / 发布说明
+├── tests/
+│   ├── e2e/                  # Playwright
+│   ├── load/                 # Node 自研压测
+│   └── mock/                 # Microsoft Graph mock
+├── docs/                     # 01-09 + prompts
+├── .github/                  # workflows + CODEOWNERS + PR 模板
+├── package.json, pnpm-workspace.yaml, tsconfig.base.json
+└── docker-compose.yml
+```
+
+## §2 模块依赖图
+
+```mermaid
+flowchart LR
+  subgraph packages
+    SE[shared-types]
+    SP[socket-protocol]
+    GE[game-engine]
+    AC[adaptive-cards]
+    TW[teams-sdk-wrapper]
+  end
+  subgraph apps
+    GS[game-server]
+    TT[teams-tab]
+    TB[teams-bot]
+    AP[admin-panel]
+    AI[ai-service Python]
+  end
+  SP --> SE
+  GS --> GE
+  GS --> SP
+  GS --> SE
+  TT --> SP
+  TT --> SE
+  TT --> TW
+  TB --> AC
+  TB --> SE
+  AP --> SP
+  AP --> SE
+  AI -.HTTP.-> GS
+  GS -.HTTP.-> AI
+```
+
+依赖规则（强约束，由 PR 评审守护）：
+
+1. **`apps/*` 不允许互相 import**——跨 app 通信必须通过 `socket-protocol` 或 HTTP。
+2. **`packages/*` 不允许 import `apps/*`**——可被 apps 依赖，反之不行。
+3. `game-engine` 不依赖任何其他 package（保持纯，便于 AI/客户端复用）。
+4. `socket-protocol` 仅依赖 `shared-types`；不依赖 NestJS / React。
+5. Python `ai-service` 与 Node 域之间走 HTTP/JSON，不共享代码（Phase 2 用 OpenAPI 自动生成 client）。
+
+## §3 Agent ↔ 产物 对照
+
+| Agent | 主要产物 | 文档 |
+| --- | --- | --- |
+| Architect | 22 节架构 + 10 Mermaid | [01-architecture.md](./01-architecture.md) |
+| Rules | `packages/game-engine`（55 测试） | [02-rules-engine.md](./02-rules-engine.md) |
+| Socket | `apps/game-server` 网关 + `packages/socket-protocol` | [03-socket-protocol.md](./03-socket-protocol.md) |
+| Frontend | `apps/teams-tab`（Next 15 + Fluent UI + Zustand） | [04-frontend.md](./04-frontend.md) |
+| AI Bot | `apps/game-server/src/ai/`（3 难度 + bot 调度） | [05-ai-bot.md](./05-ai-bot.md) |
+| Database | `apps/game-server/prisma/schema.prisma`（17 models） | [06-database.md](./06-database.md) |
+| DevOps | Dockerfile×3 / compose / k8s / workflows | [07-devops.md](./07-devops.md) |
+| QA | vitest + Playwright + load + mock（78 + 2） | [08-qa.md](./08-qa.md) |
+| Master | 本文 + [10-conventions.md](./10-conventions.md) | — |
+
+## §4 Phase 路线图
+
+```mermaid
+gantt
+  title 路线图（按 sprint，每 sprint 2 周）
+  dateFormat YYYY-MM-DD
+  section Phase 1 MVP
+  Architect/Rules/Socket/Frontend/AI/DB/DevOps/QA :done, p1, 2026-05-01, 30d
+  断线重连 + 房间持久化           :p1b, after p1, 14d
+  section Phase 2 战绩 / 排行榜
+  Prisma 仓储层 + 段位            :p2a, after p1b, 14d
+  排行榜（Redis ZSET + 物化）      :p2b, after p2a, 14d
+  战绩页 + 个人主页                :p2c, after p2b, 14d
+  section Phase 3 回放 / 观战 / 裁判
+  Replay 写入 Blob + 播放器        :p3a, after p2c, 14d
+  观战模式 + Teams Meeting 集成    :p3b, after p3a, 14d
+  Referee 后台 + 审计              :p3c, after p3b, 14d
+  section Phase 4 赛事 / 商业化
+  Tournament 数据模型 + 报名       :p4a, after p3c, 21d
+  公会 / 俱乐部                    :p4b, after p4a, 21d
+  AppSource 上架                   :p4c, after p4b, 21d
+```
+
+## §5 当前 Sprint 看板（Phase 2 · Sprint 2）
+
+| Lane | Owner | 状态 |
+| --- | --- | --- |
+| ~~MatchRepository 接口 + InMemory 实现~~ | Database | ✅ Done (Sprint 1) |
+| ~~RatingService (ELO K=24)~~ | AI/Server | ✅ Done (Sprint 1) |
+| ~~MatchService 接入 game:start/finished~~ | Server | ✅ Done (Sprint 1) |
+| ~~REST 战绩 / 排行榜 / 用户 API~~ | Server | ✅ Done (Sprint 1) |
+| ~~teams-tab /profile + /leaderboard 页面~~ | Frontend | ✅ Done (Sprint 1) |
+| `PrismaMatchRepository`（替换 InMemory，沿用现有接口） | Database | ⏳ Todo |
+| Prisma Client Module + 迁移脚本 + seed | Database | ⏳ Todo |
+| Tier 段位计算（按 rating 投影到 `tiers` 表） | Server | ⏳ Todo |
+| 战绩翻页 / 时间筛选 | Frontend | ⏳ Todo |
+| Redis ZSET 排行榜（读路径） | DevOps/Server | ⏳ Todo |
+| 集成测试：完整对局落 Postgres | QA | ⏳ Todo |
+
+### 历史 Sprint 简记
+
+- **Sprint 1 (Phase 2)** — 战绩 + 排行榜 MVP（内存仓储），见 [00-overview.md 当前进度](./00-overview.md)。
+
+> 实际看板用 GitHub Projects / Issues 维护；本表仅给 Agent 协作时一个统一参考点。
+
+## §6 接口契约（Agent 间硬约束）
+
+| 来源 | 目标 | 契约 | 守护测试 |
+| --- | --- | --- | --- |
+| Socket → Server | 客户端事件 / payload | `packages/socket-protocol` | `socket.e2e.test.ts` + typecheck |
+| Server → Engine | `validatePlay / compare / detectPattern` | `@teams-guandan/game-engine` 公共 API | `packages/game-engine/__tests__/` |
+| Server → AI Service | `POST /ai/decide` JSON | 待定（Phase 2 OpenAPI 化） | TODO contract test |
+| Tab → Bot | Adaptive Card schema | `packages/adaptive-cards` | TODO snapshot test |
+| Server → DB | Prisma Schema | `apps/game-server/prisma/schema.prisma` | `prisma validate` + migration test |
+
+任何 Agent 改动这些边界 **必须**：(1) 改契约源；(2) 同步守护测试；(3) PR 标题打 `BREAKING CHANGE` 并知会下游 Agent。
+
+## §7 Agent 协作 SOP
+
+1. **任务接入** —— 从 GitHub Issue 创建分支；标签按 Phase / Agent 分类。
+2. **设计前** —— 大改动先开 RFC issue（标签 `rfc`），48h 评论窗口。
+3. **实现中** —— 小步提交；每个提交单独通过 lint+test。
+4. **PR** —— 模板自查；CI 全绿；至少 1 reviewer（核心模块 2）。
+5. **合并** —— Squash + Conventional Commits 标题。
+6. **发布** —— 打 `vX.Y.Z` tag 触发 `release.yml`，镜像推 GHCR + AKS 滚动升级。
+
+## §8 高优先级风险登记
+
+| 风险 | 缓解 | 状态 |
+| --- | --- | --- |
+| Socket 房间状态全在内存 → 重启即丢 | Phase 2 落 Redis HSET + 重启快速恢复 | 跟踪中 |
+| 跨节点房间广播未真测 | DevOps 章 K8s manifests 已配置 Redis Adapter；待 Phase 2 集成测试 | 跟踪中 |
+| AI 决策与服务在同进程 → CPU 抖动影响 socket RTT | Phase 2 拆出 `ai-service` 真接入；保留同进程 fallback | 跟踪中 |
+| Entra ID JWT 验证未接 | Phase 2 接 jose + JWKS；dev token 仅本地保留 | 跟踪中 |
+| 反作弊覆盖弱 | Phase 3 引入服务端权威校验 + replay diff 检测 | 跟踪中 |
+| Replay JSONL Blob 成本 | Phase 3 评估归档周期 + gzip 比例 | 跟踪中 |
+
+## §9 Done 定义（每个 Phase）
+
+- 所有相关 Agent 的代码 + 文档 + 测试合入 main；
+- CI 全绿（含 e2e + security）；
+- 至少一次 docker-compose 端到端跑通；
+- 路线图与本文 §4 / §5 已同步更新。

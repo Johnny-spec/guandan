@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: game-server, namespace: guandan }
+spec:
+  replicas: 3
+  selector: { matchLabels: { app: game-server } }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  template:
+    metadata:
+      labels: { app: game-server }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3001"
+        prometheus.io/path: /metrics
+    spec:
+      containers:
+        - name: game-server
+          image: ghcr.io/johnny-spec/guandan-game-server:latest
+          ports: [{ containerPort: 3001, name: http }]
+          envFrom:
+            - configMapRef: { name: app-config }
+            - secretRef: { name: app-secrets }
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 200m, memory: 256Mi }
+            limits:   { cpu: "1",  memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: game-server, namespace: guandan }
+spec:
+  selector: { app: game-server }
+  # Socket.IO 横向扩容依赖 Redis Adapter；client IP affinity 减少握手抖动。
+  sessionAffinity: ClientIP
+  ports:
+    - { name: http, port: 3001, targetPort: http }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: game-server, namespace: guandan }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: game-server }
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: game-server, namespace: guandan }
+spec:
+  minAvailable: 2
+  selector: { matchLabels: { app: game-server } }

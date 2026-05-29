@@ -1,0 +1,26 @@
+{
+  "name": "@teams-guandan/teams-bot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo \"(no lint configured)\"",
+    "test": "echo \"(no tests)\""
+  },
+  "dependencies": {
+    "@teams-guandan/adaptive-cards": "workspace:*",
+    "@teams-guandan/shared-types": "workspace:*",
+    "botbuilder": "^4.22.0",
+    "dotenv": "^16.4.0",
+    "restify": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/restify": "^8.5.12",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}

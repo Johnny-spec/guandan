@@ -1,0 +1,4 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  # apps/ai-service is a Python service and is intentionally excluded

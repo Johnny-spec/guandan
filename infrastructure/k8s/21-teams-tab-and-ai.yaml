@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: teams-tab, namespace: guandan }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: teams-tab } }
+  template:
+    metadata: { labels: { app: teams-tab } }
+    spec:
+      containers:
+        - name: teams-tab
+          image: ghcr.io/johnny-spec/guandan-teams-tab:latest
+          ports: [{ containerPort: 3000, name: http }]
+          env:
+            - { name: NEXT_PUBLIC_API_URL,    value: "https://guandan.example.com/api" }
+            - { name: NEXT_PUBLIC_SOCKET_URL, value: "https://guandan.example.com" }
+          readinessProbe:
+            httpGet: { path: /, port: http }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits:   { cpu: 500m, memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: teams-tab, namespace: guandan }
+spec:
+  selector: { app: teams-tab }
+  ports: [{ name: http, port: 3000, targetPort: http }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: ai-service, namespace: guandan }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: ai-service } }
+  template:
+    metadata: { labels: { app: ai-service } }
+    spec:
+      containers:
+        - name: ai-service
+          image: ghcr.io/johnny-spec/guandan-ai-service:latest
+          ports: [{ containerPort: 8000, name: http }]
+          envFrom: [{ secretRef: { name: app-secrets } }]
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits:   { cpu: "2",  memory: 2Gi }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: ai-service, namespace: guandan }
+spec:
+  selector: { app: ai-service }
+  ports: [{ name: http, port: 8000, targetPort: http }]

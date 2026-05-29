@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: guandan
+  namespace: guandan
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$binary_remote_addr"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [guandan.example.com]
+      secretName: guandan-tls
+  rules:
+    - host: guandan.example.com
+      http:
+        paths:
+          - path: /socket.io/
+            pathType: Prefix
+            backend: { service: { name: game-server, port: { number: 3001 } } }
+          - path: /api/
+            pathType: Prefix
+            backend: { service: { name: game-server, port: { number: 3001 } } }
+          - path: /ai/
+            pathType: Prefix
+            backend: { service: { name: ai-service, port: { number: 8000 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: teams-tab, port: { number: 3000 } } }

@@ -1,0 +1,13 @@
+{
+  "type": "AdaptiveCard",
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "version": "1.5",
+  "body": [
+    { "type": "TextBlock", "size": "Large", "weight": "Bolder", "text": "\u63a4\u86cb\u5e73\u53f0" },
+    { "type": "TextBlock", "wrap": true, "text": "\u70b9\u51fb\u4e0b\u65b9\u6309\u94ae\u5feb\u901f\u521b\u5efa\u623f\u95f4\u6216\u52a0\u5165\u5339\u914d\u3002" }
+  ],
+  "actions": [
+    { "type": "Action.Submit", "title": "\u521b\u5efa\u623f\u95f4", "data": { "verb": "createRoom" } },
+    { "type": "Action.Submit", "title": "\u5feb\u901f\u5339\u914d", "data": { "verb": "quickMatch" } }
+  ]
+}

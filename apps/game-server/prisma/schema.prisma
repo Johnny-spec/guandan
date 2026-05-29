@@ -1,0 +1,509 @@
+// =============================================================================
+// Teams 掼蛋平台 · Prisma Schema · v1.0
+//
+// 设计总览：docs/06-database.md
+//
+// 字段命名：camelCase（Prisma 默认，自动映射到 snake_case via @@map / @map）
+// 表命名：snake_case 复数
+// 主键：CUID（全局唯一、按时间近似有序、URL 安全）
+// 时间：所有时间用 DateTime（PostgreSQL `timestamptz`）
+//
+// 索引策略：
+//   - 所有外键自动加索引（Prisma 默认）
+//   - 高频查询额外加复合索引（见每个 model 的 @@index）
+//   - 排行榜走 ranking_snapshots（物化），不实时 ORDER BY users.rating
+//
+// 分表 / 归档（详见 docs/06-database.md §7）：
+//   - match_events  按月分表（pg_partman）
+//   - audit_logs    按月分表 + 6 月后冷归档
+//   - replays JSONL 进 Blob Storage，DB 仅保存 URL + meta
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// 1. 用户系统
+// -----------------------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
+}
+
+enum AccountKind {
+  HUMAN
+  BOT // AI bot 占位账号，便于 match_players 统一外键
+}
+
+model User {
+  id           String      @id @default(cuid())
+  aadObjectId  String?     @unique // Entra ID OID；bot 为空
+  kind         AccountKind @default(HUMAN)
+  displayName  String
+  avatarUrl    String?
+  locale       String      @default("zh-CN")
+  status       UserStatus  @default(ACTIVE)
+  // 当前赛季评分 / 段位（冗余，方便排行榜读）— 真相在 rating_events
+  rating       Int         @default(1000)
+  tierId       String      @default("bronze-1")
+  // 累计统计（冗余更新；定时校对）
+  matchesTotal Int         @default(0)
+  matchesWon   Int         @default(0)
+  // Teams 集成
+  tenantId     String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  lastSeenAt   DateTime?
+
+  matchPlayers    MatchPlayer[]
+  hostedRooms     Room[]         @relation("RoomHost")
+  friendshipsFrom Friendship[]   @relation("FriendFrom")
+  friendshipsTo   Friendship[]   @relation("FriendTo")
+  bansReceived    Ban[]          @relation("BanTarget")
+  bansIssued      Ban[]          @relation("BanIssuedBy")
+  reportsFiled    Report[]       @relation("Reporter")
+  reportsReceived Report[]       @relation("ReportedUser")
+  ratingEvents    RatingEvent[]
+  spectatorLogs   SpectatorLog[]
+  refereeActions  RefereeLog[]   @relation("RefereeActor")
+  refereeTargets  RefereeLog[]   @relation("RefereeTarget")
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+
+  @@index([tierId, rating(sort: Desc)])
+  @@index([tenantId, status])
+  @@map("users")
+}
+
+// -----------------------------------------------------------------------------
+// 2. 好友系统
+// -----------------------------------------------------------------------------
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+model Friendship {
+  id         String           @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  status     FriendshipStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  acceptedAt DateTime?
+
+  fromUser User @relation("FriendFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("FriendTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId])
+  @@index([toUserId, status])
+  @@map("friendships")
+}
+
+// -----------------------------------------------------------------------------
+// 3. 房间系统（持久化）
+//    运行态在 Redis；DB 仅保存"曾经存在"的房间元数据 + 当前活跃房间快照
+// -----------------------------------------------------------------------------
+
+enum RoomVisibility {
+  PUBLIC
+  PRIVATE
+  TEAM_CHANNEL
+}
+
+enum RoomPhase {
+  IDLE
+  DEALING
+  TRIBUTE
+  PLAYING
+  SETTLING
+  FINISHED
+  ABORTED
+}
+
+model Room {
+  id             String         @id // 8 字符 short id（与运行态一致）
+  hostUserId     String
+  visibility     RoomVisibility
+  teamsChannelId String?
+  teamsTenantId  String?
+  level          String         @default("2") // 当前级牌
+  phase          RoomPhase      @default(IDLE)
+  // 当前节点（多副本时的会话粘性，Redis 也存一份做主）
+  shardNode      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  closedAt       DateTime?
+
+  host    User    @relation("RoomHost", fields: [hostUserId], references: [id])
+  matches Match[]
+
+  @@index([phase, createdAt(sort: Desc)])
+  @@index([teamsChannelId])
+  @@index([visibility, phase])
+  @@map("rooms")
+}
+
+// -----------------------------------------------------------------------------
+// 4. 对局记录 + 玩家关联
+// -----------------------------------------------------------------------------
+
+enum MatchKind {
+  CASUAL
+  RANKED
+  AI_TRAINING // 人机
+  TOURNAMENT
+}
+
+enum MatchResult {
+  PENDING
+  COMPLETED
+  ABORTED
+  DRAW
+}
+
+model Match {
+  id           String      @id @default(cuid())
+  roomId       String
+  kind         MatchKind   @default(CASUAL)
+  result       MatchResult @default(PENDING)
+  winnerTeam   String? // "NS" | "EW"
+  startLevel   String      @default("2")
+  endLevel     String?
+  hasAiPlayers Boolean     @default(false) // 冗余加速过滤
+  durationMs   Int?
+  replayId     String?     @unique
+  seasonId     String?
+  startedAt    DateTime    @default(now())
+  finishedAt   DateTime?
+
+  room    Room           @relation(fields: [roomId], references: [id])
+  players MatchPlayer[]
+  replay  Replay?        @relation(fields: [replayId], references: [id])
+  events  MatchEvent[]
+  season  RankingSeason? @relation(fields: [seasonId], references: [id])
+
+  @@index([startedAt(sort: Desc)])
+  @@index([roomId, startedAt])
+  @@index([kind, result, finishedAt])
+  @@index([seasonId, kind])
+  @@map("matches")
+}
+
+enum Seat {
+  N
+  E
+  S
+  W
+}
+
+enum Team {
+  NS
+  EW
+}
+
+model MatchPlayer {
+  matchId       String
+  userId        String
+  seat          Seat
+  team          Team
+  isBot         Boolean @default(false)
+  botDifficulty String? // 'easy' | 'normal' | 'hard'（仅 bot）
+  finishOrder   Int? // 1 = 头游, 2 = 二游, ...
+  ratingBefore  Int?
+  ratingAfter   Int?
+  ratingDelta   Int?
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@id([matchId, userId])
+  @@unique([matchId, seat])
+  @@index([userId, matchId])
+  @@map("match_players")
+}
+
+// -----------------------------------------------------------------------------
+// 5. 回放系统
+//    精简元数据在 DB；完整事件流 JSONL 放 Blob Storage
+//    高频访问的"近 N 手"摘要可走 match_events
+// -----------------------------------------------------------------------------
+
+model Replay {
+  id          String   @id @default(cuid())
+  matchId     String   @unique
+  // Blob URL：JSONL（每行 1 event，gzip 后存 Blob Storage）
+  blobUrl     String
+  // 摘要
+  totalEvents Int
+  sizeBytes   Int
+  schemaVer   Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  match Match?
+
+  @@map("replays")
+}
+
+/// 关键事件采样：放在 DB 便于"前 20 手 / 关键炸弹"快速预览
+/// 全量回放仍在 Blob。按月分表（pg_partman）。
+model MatchEvent {
+  id      BigInt   @id @default(autoincrement())
+  matchId String
+  seq     Int // 在 match 内部的事件序号
+  seat    Seat?
+  type    String // 'play' | 'pass' | 'trick-closed' | 'tribute' | 'finish' | ...
+  // 出牌张数 / 牌型摘要 / 牌 id 列表（JSON）
+  payload Json
+  at      DateTime @default(now())
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, seq])
+  @@index([matchId, at])
+  @@index([at]) // for time-based partitioning pruning
+  @@map("match_events")
+}
+
+// -----------------------------------------------------------------------------
+// 6. 排行榜 / 段位系统
+// -----------------------------------------------------------------------------
+
+model Tier {
+  id        String @id // 'bronze-1' / 'silver-2' / 'gold-3' / 'master'
+  name      String
+  minRating Int
+  maxRating Int
+  order     Int
+
+  @@index([order])
+  @@map("tiers")
+}
+
+model RankingSeason {
+  id        String   @id @default(cuid())
+  name      String
+  startedAt DateTime
+  endsAt    DateTime
+  isActive  Boolean  @default(false)
+
+  matches      Match[]
+  ratingEvents RatingEvent[]
+  snapshots    RankingSnapshot[]
+
+  @@index([isActive])
+  @@map("ranking_seasons")
+}
+
+/// 评分流水（事件溯源）：truth of record。冗余字段 users.rating 由它推导。
+model RatingEvent {
+  id           BigInt   @id @default(autoincrement())
+  userId       String
+  matchId      String?
+  seasonId     String?
+  delta        Int
+  ratingBefore Int
+  ratingAfter  Int
+  reason       String // 'match_win' | 'match_loss' | 'season_reset' | 'admin_adjust'
+  at           DateTime @default(now())
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  season RankingSeason? @relation(fields: [seasonId], references: [id])
+
+  @@index([userId, at(sort: Desc)])
+  @@index([seasonId, at])
+  @@map("rating_events")
+}
+
+/// 物化排行榜：定时（每 5 min）从 users / rating_events 计算
+/// 排行榜读路径走 Redis ZSET，DB 是兜底
+model RankingSnapshot {
+  id       BigInt   @id @default(autoincrement())
+  seasonId String
+  userId   String
+  rank     Int
+  rating   Int
+  tierId   String
+  takenAt  DateTime @default(now())
+
+  season RankingSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonId, userId, takenAt])
+  @@index([seasonId, rank])
+  @@index([seasonId, rating(sort: Desc)])
+  @@map("ranking_snapshots")
+}
+
+// -----------------------------------------------------------------------------
+// 7. 观战 / 裁判
+// -----------------------------------------------------------------------------
+
+model SpectatorLog {
+  id       BigInt    @id @default(autoincrement())
+  matchId  String
+  userId   String
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([matchId, joinedAt])
+  @@index([userId, joinedAt(sort: Desc)])
+  @@map("spectator_logs")
+}
+
+enum RefereeAction {
+  KICK
+  MUTE
+  UNMUTE
+  PAUSE_MATCH
+  RESUME_MATCH
+  REASSIGN_HOST
+  FORCE_ABORT
+  REVIEW_PLAY
+}
+
+model RefereeLog {
+  id        BigInt        @id @default(autoincrement())
+  refereeId String
+  targetId  String?
+  matchId   String?
+  roomId    String?
+  action    RefereeAction
+  reason    String?
+  metadata  Json?
+  at        DateTime      @default(now())
+
+  referee User  @relation("RefereeActor", fields: [refereeId], references: [id])
+  target  User? @relation("RefereeTarget", fields: [targetId], references: [id])
+
+  @@index([matchId, at])
+  @@index([refereeId, at(sort: Desc)])
+  @@index([action, at])
+  @@map("referee_logs")
+}
+
+// -----------------------------------------------------------------------------
+// 8. 封禁 / 举报
+// -----------------------------------------------------------------------------
+
+enum BanScope {
+  ACCOUNT // 整账号
+  CHAT
+  RANKED
+  TOURNAMENT
+}
+
+model Ban {
+  id         String    @id @default(cuid())
+  userId     String
+  scope      BanScope  @default(ACCOUNT)
+  reason     String
+  issuedById String
+  startedAt  DateTime  @default(now())
+  expiresAt  DateTime? // null = 永久
+  revokedAt  DateTime?
+  metadata   Json?
+
+  user     User @relation("BanTarget", fields: [userId], references: [id], onDelete: Cascade)
+  issuedBy User @relation("BanIssuedBy", fields: [issuedById], references: [id])
+
+  @@index([userId, scope, expiresAt])
+  @@index([expiresAt])
+  @@map("bans")
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportReason {
+  CHEATING
+  COLLUSION
+  ABUSE
+  AFK
+  OTHER
+}
+
+model Report {
+  id             String       @id @default(cuid())
+  reporterId     String
+  reportedUserId String
+  matchId        String?
+  reason         ReportReason
+  description    String?
+  status         ReportStatus @default(OPEN)
+  resolution     String?
+  evidence       Json?
+  createdAt      DateTime     @default(now())
+  resolvedAt     DateTime?
+
+  reporter     User @relation("Reporter", fields: [reporterId], references: [id])
+  reportedUser User @relation("ReportedUser", fields: [reportedUserId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([reportedUserId, createdAt(sort: Desc)])
+  @@index([matchId])
+  @@map("reports")
+}
+
+// -----------------------------------------------------------------------------
+// 9. 审计 / 通知（系统内）
+// -----------------------------------------------------------------------------
+
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  actorId    String?
+  action     String
+  resource   String
+  resourceId String?
+  metadata   Json?
+  ip         String?
+  userAgent  String?
+  at         DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([actorId, at(sort: Desc)])
+  @@index([resource, resourceId])
+  @@index([at]) // partition prune
+  @@map("audit_logs")
+}
+
+enum NotificationKind {
+  FRIEND_REQUEST
+  MATCH_INVITE
+  TOURNAMENT_NEWS
+  RANK_PROMOTION
+  REPORT_RESOLVED
+  SYSTEM
+}
+
+model Notification {
+  id        BigInt           @id @default(autoincrement())
+  userId    String
+  kind      NotificationKind
+  title     String
+  body      String?
+  payload   Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@map("notifications")
+}

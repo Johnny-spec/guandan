@@ -1,0 +1,15 @@
+# 默认所有变更通知核心维护者。
+* @Johnny-spec
+
+# 规则引擎 / 服务核心：需要双人复核
+/packages/game-engine/                 @Johnny-spec
+/apps/game-server/src/game/            @Johnny-spec
+/apps/game-server/prisma/              @Johnny-spec
+
+# 基础设施 / CI
+/infrastructure/                       @Johnny-spec
+/.github/workflows/                    @Johnny-spec
+/docker-compose.yml                    @Johnny-spec
+
+# 文档
+/docs/                                 @Johnny-spec

@@ -1,0 +1,35 @@
+{
+  "name": "@teams-guandan/teams-tab",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"(no tests)\""
+  },
+  "dependencies": {
+    "@fluentui/react-components": "^9.54.0",
+    "@microsoft/teams-js": "^2.24.0",
+    "@tanstack/react-query": "^5.51.0",
+    "@teams-guandan/shared-types": "workspace:*",
+    "@teams-guandan/socket-protocol": "workspace:*",
+    "@teams-guandan/teams-sdk-wrapper": "workspace:*",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "socket.io-client": "^4.7.5",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.5.0"
+  }
+}

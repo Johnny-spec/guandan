@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@teams-guandan/game-engine": ["packages/game-engine/src"],
+      "@teams-guandan/shared-types": ["packages/shared-types/src"],
+      "@teams-guandan/socket-protocol": ["packages/socket-protocol/src"],
+      "@teams-guandan/adaptive-cards": ["packages/adaptive-cards/src"],
+      "@teams-guandan/teams-sdk-wrapper": ["packages/teams-sdk-wrapper/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".next", "coverage"]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "teams-guandan",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Microsoft Teams Guandan (\u6398\u86cb) multiplayer card game platform - monorepo root",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" run build && pnpm -r --filter \"./apps/*\" run build",
+    "dev": "pnpm -r --parallel run dev",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "test:cov": "pnpm -r --filter \"./packages/*\" --filter \"./apps/game-server\" run test:cov",
+    "test:e2e": "playwright test",
+    "test:load": "node tests/load/socket-load.mjs",
+    "mock:graph": "node tests/mock/teams-graph.mjs",
+    "typecheck": "pnpm -r run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "clean": "pnpm -r exec rm -rf dist .next .turbo node_modules"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0",
+    "@types/node": "^20.12.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.3.0",
+    "socket.io-client": "^4.7.5",
+    "typescript": "^5.5.0"
+  }
+}

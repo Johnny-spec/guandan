@@ -1,0 +1,64 @@
+# 生产建议使用 Azure Cache for Redis（Cluster 模式）与 Azure Database for PostgreSQL Flexible Server。
+# 本文件仅用于自管 K8s 演示。
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: redis, namespace: guandan }
+spec:
+  serviceName: redis
+  replicas: 1
+  selector: { matchLabels: { app: redis } }
+  template:
+    metadata: { labels: { app: redis } }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args: ["redis-server", "--appendonly", "yes"]
+          ports: [{ containerPort: 6379, name: redis }]
+          volumeMounts: [{ name: data, mountPath: /data }]
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 10Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: redis, namespace: guandan }
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379, targetPort: redis }]
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: postgres, namespace: guandan }
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector: { matchLabels: { app: postgres } }
+  template:
+    metadata: { labels: { app: postgres } }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - { name: POSTGRES_USER,     value: guandan }
+            - { name: POSTGRES_PASSWORD, value: guandan }
+            - { name: POSTGRES_DB,       value: guandan }
+          ports: [{ containerPort: 5432, name: pg }]
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 20Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: postgres, namespace: guandan }
+spec:
+  selector: { app: postgres }
+  ports: [{ port: 5432, targetPort: pg }]
+  clusterIP: None

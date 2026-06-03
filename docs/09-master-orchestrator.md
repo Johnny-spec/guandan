@@ -128,6 +128,15 @@ gantt
 | ~~Redis ZSET 排行榜（读路径）~~ | DevOps/Server | ✅ Done (InMemory ZSET，接口对齐 Redis；ioredis 替换即可) |
 | 集成测试：完整对局落 Postgres | QA | ⏳ Todo |
 
+#### Phase 3 提前启动（外部依赖暂无，先做接口/内存版）
+
+| Lane | Owner | 状态 |
+| --- | --- | --- |
+| ~~Replay 事件日志（内存版）+ REST `/api/v1/matches/:id/replay`~~ | Replay/Server | ✅ Done (接口对齐未来 Postgres `match_events` 表) |
+| Replay 播放器 UI（teams-tab） | Frontend | ⏳ Todo |
+| 观战模式（spectator socket room） | Spectator/Server | ⏳ Todo |
+| Referee 后台基础（裁判操作审计） | Referee/Server | ⏳ Todo |
+
 ### 历史 Sprint 简记
 
 - **Sprint 1 (Phase 2)** — 战绩 + 排行榜 MVP（内存仓储），见 [00-overview.md 当前进度](./00-overview.md)。

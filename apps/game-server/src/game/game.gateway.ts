@@ -25,6 +25,7 @@ import { AuthService, type AuthenticatedUser } from '../auth/auth.service.js';
 import { RoomService, type Room } from './room.service.js';
 import { BotService, type BotTurnOutcome } from '../ai/bot.service.js';
 import { MatchService, type MatchSeat } from '../match/match.service.js';
+import { ReplayService } from '../replay/replay.service.js';
 
 type Sock = Socket<ClientToServerEvents, ServerToClientEvents>;
 type Srv = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -50,6 +51,7 @@ export class GameGateway
     @Inject(RoomService) private readonly rooms: RoomService,
     @Inject(BotService) private readonly bots: BotService,
     @Inject(MatchService) private readonly matches: MatchService,
+    @Inject(ReplayService) private readonly replay: ReplayService,
   ) {}
 
   afterInit(server: Srv) {
@@ -157,6 +159,19 @@ export class GameGateway
       ...(m.botDifficulty ? { botDifficulty: m.botDifficulty } : {}),
     }));
     this.matches.onStart(body.roomId, room.level, seats);
+    const matchId = this.matches.getActiveMatchId(body.roomId);
+    if (matchId) {
+      this.replay.recordMatchStart(matchId, {
+        roomId: body.roomId,
+        startLevel: room.level,
+        seats: seats.map((s) => ({
+          userId: s.userId,
+          displayName: s.displayName,
+          seat: s.seat,
+          isBot: s.isBot,
+        })),
+      });
+    }
     this.server.to(body.roomId).emit('room:updated', r.room);
     this.broadcastPrivateSnapshots(body.roomId);
     this.scheduleBot(body.roomId);
@@ -203,12 +218,24 @@ export class GameGateway
     if (!r.ok) return err(r.code, r.message);
 
     this.server.to(body.roomId).emit('game:played', { seat, cardIds: body.cardIds });
+    const playMatchId = this.matches.getActiveMatchId(body.roomId);
+    if (playMatchId) this.replay.recordPlay(playMatchId, { seat, cardIds: body.cardIds });
     const detail = this.rooms.toDetail(room);
     this.server.to(body.roomId).emit('room:updated', detail);
     this.broadcastPrivateSnapshots(body.roomId);
 
     if (r.finished && r.winnerTeam) {
-      this.matches.onFinish(body.roomId, r.winnerTeam, [seat], room.level);
+      const finishMatchId = this.matches.getActiveMatchId(body.roomId);
+      const startedAtMs = Date.now();
+      const finishedRec = this.matches.onFinish(body.roomId, r.winnerTeam, [seat], room.level);
+      if (finishMatchId) {
+        this.replay.recordMatchFinish(finishMatchId, {
+          winnerTeam: r.winnerTeam,
+          finishedOrder: [seat],
+          endLevel: room.level,
+          durationMs: finishedRec?.durationMs ?? Date.now() - startedAtMs,
+        });
+      }
       this.server.to(body.roomId).emit('game:finished', {
         winnerTeam: r.winnerTeam,
         finishedOrder: [seat],
@@ -237,8 +264,11 @@ export class GameGateway
     if (!r.ok) return err(r.code, r.message);
 
     this.server.to(body.roomId).emit('game:passed', { seat });
+    const passMatchId = this.matches.getActiveMatchId(body.roomId);
+    if (passMatchId) this.replay.recordPass(passMatchId, { seat });
     if (r.trickClosed && r.nextLead) {
       this.server.to(body.roomId).emit('game:trick-closed', { lead: r.nextLead });
+      if (passMatchId) this.replay.recordTrickClosed(passMatchId, { lead: r.nextLead });
     }
     this.broadcastPrivateSnapshots(body.roomId);
     this.scheduleBot(body.roomId);
@@ -296,10 +326,22 @@ export class GameGateway
         seat: outcome.seat,
         cardIds: outcome.cardIds,
       });
+      const playMatchId = this.matches.getActiveMatchId(roomId);
+      if (playMatchId) this.replay.recordPlay(playMatchId, { seat: outcome.seat, cardIds: outcome.cardIds });
       this.server.to(roomId).emit('room:updated', detail);
       this.broadcastPrivateSnapshots(roomId);
       if (outcome.result.finished && outcome.result.winnerTeam) {
-        this.matches.onFinish(roomId, outcome.result.winnerTeam, [outcome.seat], room.level);
+        const finishMatchId = this.matches.getActiveMatchId(roomId);
+        const startedAtMs = Date.now();
+        const finishedRec = this.matches.onFinish(roomId, outcome.result.winnerTeam, [outcome.seat], room.level);
+        if (finishMatchId) {
+          this.replay.recordMatchFinish(finishMatchId, {
+            winnerTeam: outcome.result.winnerTeam,
+            finishedOrder: [outcome.seat],
+            endLevel: room.level,
+            durationMs: finishedRec?.durationMs ?? Date.now() - startedAtMs,
+          });
+        }
         this.server.to(roomId).emit('game:finished', {
           winnerTeam: outcome.result.winnerTeam,
           finishedOrder: [outcome.seat],
@@ -310,8 +352,11 @@ export class GameGateway
       }
     } else {
       this.server.to(roomId).emit('game:passed', { seat: outcome.seat });
+      const passMatchId = this.matches.getActiveMatchId(roomId);
+      if (passMatchId) this.replay.recordPass(passMatchId, { seat: outcome.seat });
       if (outcome.result.trickClosed && outcome.result.nextLead) {
         this.server.to(roomId).emit('game:trick-closed', { lead: outcome.result.nextLead });
+        if (passMatchId) this.replay.recordTrickClosed(passMatchId, { lead: outcome.result.nextLead });
       }
       this.broadcastPrivateSnapshots(roomId);
     }

@@ -199,6 +199,11 @@ export class MatchService {
     });
   }
 
+  /** 房间当前进行中对局的 matchId（无则 null）。供 ReplayService / Spectator 查询用。 */
+  getActiveMatchId(roomId: string): string | null {
+    return this.pending.get(roomId)?.matchId ?? null;
+  }
+
   // ---- 查询 API（控制器直接调用） ----
   upsertHuman(userId: string, displayName: string): void {
     this.repo.upsertUser({ id: userId, displayName, isBot: false });

@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { InMemoryMatchRepository } from '../match/match.repository.js';
 import { RatingService } from '../match/rating.service.js';
 import { TierService } from '../match/tier.service.js';
+import { InMemoryZSetLeaderboard } from '../match/leaderboard.cache.js';
 import { MatchService, type MatchSeat } from '../match/match.service.js';
 
 const humanSeats: MatchSeat[] = [
@@ -24,7 +25,7 @@ describe('RatingEvent 流水', () => {
 
   beforeEach(() => {
     repo = new InMemoryMatchRepository();
-    svc = new MatchService(repo, new RatingService(), new TierService());
+    svc = new MatchService(repo, new RatingService(), new TierService(), new InMemoryZSetLeaderboard());
   });
 
   it('onFinish 为每个人类玩家写一条 RatingEvent', () => {

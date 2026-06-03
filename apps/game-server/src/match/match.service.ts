@@ -12,6 +12,7 @@ import {
 } from './match.repository.js';
 import { RatingService } from './rating.service.js';
 import { TierService, type TierInfo } from './tier.service.js';
+import { LEADERBOARD_CACHE, type LeaderboardCache } from './leaderboard.cache.js';
 
 export interface MatchSeat {
   userId: string;
@@ -23,6 +24,13 @@ export interface MatchSeat {
 
 export type UserView = UserRecord & { tier: TierInfo };
 export type LeaderboardView = LeaderboardEntry & { tier: TierInfo };
+export interface UserRankInfo {
+  userId: string;
+  rating: number;
+  rank: number | null;
+  tier: TierInfo;
+  total: number;
+}
 
 function teamOf(seat: Seat): Team {
   return seat === 'N' || seat === 'S' ? 'NS' : 'EW';
@@ -49,6 +57,7 @@ export class MatchService {
     @Inject(MATCH_REPOSITORY) private readonly repo: MatchRepository,
     @Inject(RatingService) private readonly rating: RatingService,
     @Inject(TierService) private readonly tiers: TierService,
+    @Inject(LEADERBOARD_CACHE) private readonly lbCache: LeaderboardCache,
   ) {}
 
   onStart(roomId: string, level: string, seats: MatchSeat[]): MatchRecord | null {
@@ -126,6 +135,7 @@ export class MatchService {
       const won = teamOf(s.seat) === winnerTeam;
       if (!s.isBot) {
         this.repo.setUserRating(s.userId, out.ratingAfter);
+        this.lbCache.setScore(s.userId, out.ratingAfter);
         this.repo.createRatingEvent({
           userId: s.userId,
           matchId: pending.matchId,
@@ -211,8 +221,47 @@ export class MatchService {
     return this.repo.queryMatchesByUser(userId, q);
   }
   listLeaderboard(limit: number): LeaderboardView[] {
-    const entries = this.repo.listLeaderboard(Math.min(Math.max(limit, 1), 100));
+    const n = Math.min(Math.max(limit, 1), 100);
+    // 优先走 cache（ZSET 语义，O(N) 取前 N），fallback 到 repo 扫描。
+    const cached = this.lbCache.topN(n);
+    if (cached.length > 0) {
+      const out: LeaderboardView[] = [];
+      for (const e of cached) {
+        const u = this.repo.getUser(e.userId);
+        if (!u || u.isBot || u.matchesTotal <= 0) continue;
+        out.push({
+          rank: e.rank,
+          userId: u.id,
+          displayName: u.displayName,
+          rating: u.rating,
+          matchesTotal: u.matchesTotal,
+          matchesWon: u.matchesWon,
+          tier: this.tiers.resolve(u.rating),
+        });
+      }
+      if (out.length > 0) {
+        // 重新连续编号（过滤 bot 等之后）
+        return out.map((e, i) => ({ ...e, rank: i + 1 }));
+      }
+    }
+    const entries = this.repo.listLeaderboard(n);
     return entries.map((e) => ({ ...e, tier: this.tiers.resolve(e.rating) }));
+  }
+  /** 单用户的全局排名 + 当前段位（用于战绩页"我的位置"卡片）。 */
+  getUserRank(userId: string): UserRankInfo | null {
+    const u = this.repo.getUser(userId);
+    if (!u) return null;
+    // 保证 cache 至少有该用户（懒补：用户初次访问时若未参与过任何对局也应能看到 null rank）
+    if (u.matchesTotal > 0 && this.lbCache.scoreOf(userId) === null) {
+      this.lbCache.setScore(userId, u.rating);
+    }
+    return {
+      userId: u.id,
+      rating: u.rating,
+      rank: u.matchesTotal > 0 && !u.isBot ? this.lbCache.rankOf(userId) : null,
+      tier: this.tiers.resolve(u.rating),
+      total: this.lbCache.size(),
+    };
   }
   listRatingEventsByUser(userId: string, limit: number) {
     return this.repo.listRatingEventsByUser(userId, Math.min(Math.max(limit, 1), 200));

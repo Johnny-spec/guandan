@@ -40,6 +40,7 @@
 - [x] **Phase 2 · Sprint 2 (Tier 段位计算)** — `apps/game-server/src/match/tier.service.ts`：7 档段位（青铜 → 宗师）+ 进度条计算；MatchService.getUserView / listLeaderboard 自动注入 tier；teams-tab 战绩页加段位 banner + 排行榜列加段位徽章。新增 9 个测试（tier 8 + match 段位 1），测试 48 全绿。
 - [x] **Phase 2 · Sprint 2 (战绩翻页 / 时间筛选)** — `MatchRepository.queryMatchesByUser({limit,cursor,since,until,completedOnly})` 游标分页；REST `/api/v1/matches` 兼容数组与 page 两种形态；teams-tab 战绩页加日期筛选 + 仅已完成 + 加载更多按钮；总场数显示。+6 测试 → 54/54。
 - [x] **Phase 2 · Sprint 2 (RatingEvent 流水)** — `MatchRepository.createRatingEvent / listRatingEventsByUser`（与 Prisma `model RatingEvent` 字段对齐）；`MatchService.onFinish` 为每个人类玩家写一条 `match_win` / `match_loss` 流水；新增 `GET /api/v1/users/:id/rating-events`。+5 测试 → 59/59。为 Prisma 落地铺好事件溯源。
+- [x] **Phase 2 · Sprint 2 (排行榜缓存层 / ZSET)** — `apps/game-server/src/match/leaderboard.cache.ts`：`LeaderboardCache` 接口（语义对齐 Redis ZSET：setScore / incrBy / remove / scoreOf / rankOf / topN / size）+ `InMemoryZSetLeaderboard` 实现（`(score desc, userId asc)` 稳定排序，二分插入，bot 不入榜）。`MatchService.onFinish` 同步写 cache；`listLeaderboard` 优先走 cache 路径；新增 `GET /api/v1/users/:id/rank` 返回 `{ rank, score, total, tier }`。+14 测试 → 73/73。后续接 ioredis 仅替换 Module Provider。
 
 ## 关键决策
 

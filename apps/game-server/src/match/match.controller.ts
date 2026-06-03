@@ -43,6 +43,13 @@ export class MatchController {
     return { ok: true, data: this.svc.listMatchesByUser(userId, n) };
   }
 
+  @Get('users/:id/rank')
+  rank(@Param('id') id: string) {
+    const r = this.svc.getUserRank(id);
+    if (!r) throw new NotFoundException({ ok: false, code: 'USER_NOT_FOUND', message: id });
+    return { ok: true, data: r };
+  }
+
   @Get('users/:id/rating-events')
   ratingEvents(@Param('id') id: string, @Query('limit') limit?: string) {
     const n = limit ? Number(limit) : 50;

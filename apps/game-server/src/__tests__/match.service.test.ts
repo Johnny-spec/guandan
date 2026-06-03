@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { InMemoryMatchRepository } from '../match/match.repository.js';
 import { RatingService } from '../match/rating.service.js';
 import { TierService } from '../match/tier.service.js';
+import { InMemoryZSetLeaderboard } from '../match/leaderboard.cache.js';
 import { MatchService, type MatchSeat } from '../match/match.service.js';
 
 const seats: MatchSeat[] = [
@@ -17,7 +18,7 @@ describe('MatchService', () => {
 
   beforeEach(() => {
     repo = new InMemoryMatchRepository();
-    svc = new MatchService(repo, new RatingService(), new TierService());
+    svc = new MatchService(repo, new RatingService(), new TierService(), new InMemoryZSetLeaderboard());
   });
 
   it('onStart 创建 PENDING 对局并 upsert 所有玩家', () => {

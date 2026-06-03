@@ -125,7 +125,7 @@ gantt
 | ~~Tier 段位计算（按 rating 投影到 `tiers` 表）~~ | Server | ✅ Done |
 | ~~战绩翻页 / 时间筛选~~ | Frontend | ✅ Done |
 | ~~RatingEvent 评分流水（事件溯源）~~ | Server | ✅ Done |
-| Redis ZSET 排行榜（读路径） | DevOps/Server | ⏳ Todo |
+| ~~Redis ZSET 排行榜（读路径）~~ | DevOps/Server | ✅ Done (InMemory ZSET，接口对齐 Redis；ioredis 替换即可) |
 | 集成测试：完整对局落 Postgres | QA | ⏳ Todo |
 
 ### 历史 Sprint 简记

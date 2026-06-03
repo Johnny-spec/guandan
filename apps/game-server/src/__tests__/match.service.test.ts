@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { InMemoryMatchRepository } from '../match/match.repository.js';
 import { RatingService } from '../match/rating.service.js';
+import { TierService } from '../match/tier.service.js';
 import { MatchService, type MatchSeat } from '../match/match.service.js';
 
 const seats: MatchSeat[] = [
@@ -16,7 +17,7 @@ describe('MatchService', () => {
 
   beforeEach(() => {
     repo = new InMemoryMatchRepository();
-    svc = new MatchService(repo, new RatingService());
+    svc = new MatchService(repo, new RatingService(), new TierService());
   });
 
   it('onStart 创建 PENDING 对局并 upsert 所有玩家', () => {
@@ -87,5 +88,25 @@ describe('MatchService', () => {
     const start = svc.onStart('room-1', '2', seats)!;
     svc.onAbort('room-1');
     expect(repo.getMatch(start.id)?.result).toBe('ABORTED');
+  });
+
+  it('getUserView 返回带段位信息', () => {
+    repo.upsertUser({ id: 'alice', displayName: 'Alice', isBot: false });
+    repo.setUserRating('alice', 1150); // platinum
+    const v = svc.getUserView('alice');
+    expect(v?.tier.key).toBe('platinum');
+    expect(v?.tier.rating).toBe(1150);
+    expect(v?.tier.nextTier).toBe('diamond');
+  });
+
+  it('listLeaderboard 每个条目附带 tier', () => {
+    svc.onStart('room-1', '2', seats);
+    svc.onFinish('room-1', 'NS', ['N'], '3');
+    const lb = svc.listLeaderboard(10);
+    expect(lb.length).toBeGreaterThan(0);
+    for (const e of lb) {
+      expect(e.tier).toBeDefined();
+      expect(typeof e.tier.label).toBe('string');
+    }
   });
 });

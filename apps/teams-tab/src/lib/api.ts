@@ -17,6 +17,16 @@ async function getJson<T>(path: string): Promise<Envelope<T>> {
   }
 }
 
+export interface TierDto {
+  key: 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | 'master' | 'grandmaster';
+  label: string;
+  color: string;
+  rating: number;
+  nextTier: TierDto['key'] | null;
+  ratingToNext: number | null;
+  progress: number;
+}
+
 export interface UserDto {
   id: string;
   displayName: string;
@@ -25,6 +35,7 @@ export interface UserDto {
   matchesTotal: number;
   matchesWon: number;
   lastSeenAt: string;
+  tier?: TierDto;
 }
 
 export interface MatchDto {
@@ -60,6 +71,7 @@ export interface LeaderboardDto {
   rating: number;
   matchesTotal: number;
   matchesWon: number;
+  tier?: TierDto;
 }
 
 export const api = {

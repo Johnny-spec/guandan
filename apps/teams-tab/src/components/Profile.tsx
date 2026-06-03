@@ -77,6 +77,65 @@ export function Profile() {
 
       {err && <p style={{ color: '#d13438' }}>错误：{err}</p>}
 
+      {me?.tier && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            padding: 16,
+            marginBottom: 16,
+            border: `2px solid ${me.tier.color}`,
+            borderRadius: 8,
+            background: `${me.tier.color}10`,
+          }}
+        >
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: me.tier.color,
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              fontSize: 18,
+            }}
+          >
+            {me.tier.label}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600 }}>
+              当前段位：<span style={{ color: me.tier.color }}>{me.tier.label}</span>（{me.rating} 分）
+            </div>
+            <div style={{ marginTop: 6, fontSize: 12, color: '#666' }}>
+              {me.tier.ratingToNext !== null
+                ? `距下一段还差 ${me.tier.ratingToNext} 分`
+                : '已是最高段位'}
+            </div>
+            <div
+              style={{
+                marginTop: 8,
+                height: 6,
+                borderRadius: 3,
+                background: '#eee',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${Math.round(me.tier.progress * 100)}%`,
+                  height: '100%',
+                  background: me.tier.color,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <Card label="评分" value={me?.rating ?? '—'} />
         <Card label="对局" value={me?.matchesTotal ?? 0} />
@@ -136,6 +195,7 @@ export function Profile() {
           <thead>
             <tr style={{ background: '#f5f5f5', textAlign: 'left' }}>
               <th style={th}>#</th>
+              <th style={th}>段位</th>
               <th style={th}>玩家</th>
               <th style={th}>评分</th>
               <th style={th}>胜/总</th>
@@ -151,6 +211,24 @@ export function Profile() {
                 }}
               >
                 <td style={td}>{e.rank}</td>
+                <td style={td}>
+                  {e.tier ? (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                        background: e.tier.color,
+                        color: '#fff',
+                        fontSize: 12,
+                      }}
+                    >
+                      {e.tier.label}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
+                </td>
                 <td style={td}>{e.displayName}</td>
                 <td style={td}>{e.rating}</td>
                 <td style={td}>

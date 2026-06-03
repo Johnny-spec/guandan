@@ -122,7 +122,7 @@ gantt
 | ~~teams-tab /profile + /leaderboard 页面~~ | Frontend | ✅ Done (Sprint 1) |
 | `PrismaMatchRepository`（替换 InMemory，沿用现有接口） | Database | ⏳ Todo |
 | Prisma Client Module + 迁移脚本 + seed | Database | ⏳ Todo |
-| Tier 段位计算（按 rating 投影到 `tiers` 表） | Server | ⏳ Todo |
+| ~~Tier 段位计算（按 rating 投影到 `tiers` 表）~~ | Server | ✅ Done |
 | 战绩翻页 / 时间筛选 | Frontend | ⏳ Todo |
 | Redis ZSET 排行榜（读路径） | DevOps/Server | ⏳ Todo |
 | 集成测试：完整对局落 Postgres | QA | ⏳ Todo |

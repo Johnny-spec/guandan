@@ -7,7 +7,7 @@ export class MatchController {
 
   @Get('users/:id')
   getUser(@Param('id') id: string) {
-    const u = this.svc.getUser(id);
+    const u = this.svc.getUserView(id);
     if (!u) throw new NotFoundException({ ok: false, code: 'USER_NOT_FOUND', message: id });
     return { ok: true, data: u };
   }

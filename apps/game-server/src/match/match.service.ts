@@ -11,6 +11,7 @@ import {
   type UserRecord,
 } from './match.repository.js';
 import { RatingService } from './rating.service.js';
+import { TierService, type TierInfo } from './tier.service.js';
 
 export interface MatchSeat {
   userId: string;
@@ -19,6 +20,9 @@ export interface MatchSeat {
   isBot: boolean;
   botDifficulty?: 'easy' | 'normal' | 'hard';
 }
+
+export type UserView = UserRecord & { tier: TierInfo };
+export type LeaderboardView = LeaderboardEntry & { tier: TierInfo };
 
 function teamOf(seat: Seat): Team {
   return seat === 'N' || seat === 'S' ? 'NS' : 'EW';
@@ -44,6 +48,7 @@ export class MatchService {
   constructor(
     @Inject(MATCH_REPOSITORY) private readonly repo: MatchRepository,
     @Inject(RatingService) private readonly rating: RatingService,
+    @Inject(TierService) private readonly tiers: TierService,
   ) {}
 
   onStart(roomId: string, level: string, seats: MatchSeat[]): MatchRecord | null {
@@ -182,10 +187,16 @@ export class MatchService {
   getUser(id: string): UserRecord | null {
     return this.repo.getUser(id);
   }
+  getUserView(id: string): UserView | null {
+    const u = this.repo.getUser(id);
+    if (!u) return null;
+    return { ...u, tier: this.tiers.resolve(u.rating) };
+  }
   listMatchesByUser(userId: string, limit: number): MatchRecord[] {
     return this.repo.listMatchesByUser(userId, Math.min(Math.max(limit, 1), 100));
   }
-  listLeaderboard(limit: number): LeaderboardEntry[] {
-    return this.repo.listLeaderboard(Math.min(Math.max(limit, 1), 100));
+  listLeaderboard(limit: number): LeaderboardView[] {
+    const entries = this.repo.listLeaderboard(Math.min(Math.max(limit, 1), 100));
+    return entries.map((e) => ({ ...e, tier: this.tiers.resolve(e.rating) }));
   }
 }

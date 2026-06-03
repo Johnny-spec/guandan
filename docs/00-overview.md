@@ -37,7 +37,7 @@
 - [x] **QA Agent v1.0** — [docs/08-qa.md](./08-qa.md)，game-engine 覆盖率 87% lines / 88% branches，game-server 24 vitest（新增 1 个 socket e2e），Playwright + 自研压测脚本 + Mock Graph 服务，CI 含 coverage + e2e 双 job。
 - [x] **Master Orchestrator Agent v1.0** — [docs/09-master-orchestrator.md](./09-master-orchestrator.md) + [docs/10-conventions.md](./10-conventions.md) + [CONTRIBUTING.md](../CONTRIBUTING.md) + `.github/CODEOWNERS` + PR 模板。九位 Agent 全部交付，Phase 1 MVP 闭环。
 - [x] **Phase 2 · Sprint 1 (战绩 / 排行榜 MVP)** — `apps/game-server/src/match/`：`MatchRepository`（InMemory + 接口与 Prisma schema 对齐）、`RatingService`（团队 ELO，K=24）、`MatchService` 接入 `GameGateway` 在 `game:start` / `game:finished` 自动落库与回写评分；REST 控制器 `GET /api/v1/{users/:id,matches,leaderboard}`；teams-tab 新增 `/profile` 与 `/leaderboard` 页面 + 大厅导航。新增 14 个 vitest（rating 7 + match 7），全部测试 38 绿。
-- [ ] Phase 2 Sprint 2：`PrismaMatchRepository` 替换 InMemory + 战绩翻页 + 段位 (Tier) 计算。
+- [x] **Phase 2 · Sprint 2 (Tier 段位计算)** — `apps/game-server/src/match/tier.service.ts`：7 档段位（青铜 → 宗师）+ 进度条计算；MatchService.getUserView / listLeaderboard 自动注入 tier；teams-tab 战绩页加段位 banner + 排行榜列加段位徽章。新增 9 个测试（tier 8 + match 段位 1），测试 48 全绿。
 
 ## 关键决策
 

@@ -38,6 +38,7 @@ export function Leaderboard() {
           <thead>
             <tr style={{ background: '#f5f5f5', textAlign: 'left' }}>
               <th style={th}>#</th>
+              <th style={th}>段位</th>
               <th style={th}>玩家</th>
               <th style={th}>评分</th>
               <th style={th}>胜</th>
@@ -57,6 +58,24 @@ export function Leaderboard() {
                   }}
                 >
                   <td style={td}>{e.rank}</td>
+                  <td style={td}>
+                    {e.tier ? (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: 10,
+                          background: e.tier.color,
+                          color: '#fff',
+                          fontSize: 12,
+                        }}
+                      >
+                        {e.tier.label}
+                      </span>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                   <td style={td}>{e.displayName}</td>
                   <td style={{ ...td, fontWeight: 600 }}>{e.rating}</td>
                   <td style={td}>{e.matchesWon}</td>

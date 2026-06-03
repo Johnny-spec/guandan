@@ -210,6 +210,7 @@ export function Profile() {
               <th style={th}>对手</th>
               <th style={th}>评分</th>
               <th style={th}>时长</th>
+              <th style={th}>回放</th>
             </tr>
           </thead>
           <tbody>
@@ -233,6 +234,9 @@ export function Profile() {
                       : '—'}
                   </td>
                   <td style={td}>{fmtDuration(m.durationMs)}</td>
+                  <td style={td}>
+                    <a href={`/replay/${encodeURIComponent(m.id)}`}>回放</a>
+                  </td>
                 </tr>
               );
             })}

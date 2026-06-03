@@ -80,6 +80,27 @@ export interface MatchesPageDto {
   total: number;
 }
 
+export interface ReplayMetaDto {
+  matchId: string;
+  startedAtMs: number | null;
+  finishedAtMs: number | null;
+  eventCount: number;
+}
+
+export interface ReplayEventDto {
+  matchId: string;
+  seq: number;
+  tsMs: number;
+  kind: 'match_start' | 'play' | 'pass' | 'trick_closed' | 'match_finish';
+  // payload 形态见后端 replay.types.ts；前端按 kind 分支取
+  payload: Record<string, unknown>;
+}
+
+export interface ReplayBundleDto {
+  meta: ReplayMetaDto;
+  events: ReplayEventDto[];
+}
+
 export const api = {
   getUser: (id: string) => getJson<UserDto>(`/api/v1/users/${encodeURIComponent(id)}`),
   listMatches: (userId: string, limit = 20) =>
@@ -97,4 +118,6 @@ export const api = {
     return getJson<MatchesPageDto>(`/api/v1/matches?${params.toString()}`);
   },
   leaderboard: (limit = 50) => getJson<LeaderboardDto[]>(`/api/v1/leaderboard?limit=${limit}`),
+  getReplay: (matchId: string) =>
+    getJson<ReplayBundleDto>(`/api/v1/matches/${encodeURIComponent(matchId)}/replay`),
 };

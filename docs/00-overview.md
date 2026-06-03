@@ -42,6 +42,7 @@
 - [x] **Phase 2 · Sprint 2 (RatingEvent 流水)** — `MatchRepository.createRatingEvent / listRatingEventsByUser`（与 Prisma `model RatingEvent` 字段对齐）；`MatchService.onFinish` 为每个人类玩家写一条 `match_win` / `match_loss` 流水；新增 `GET /api/v1/users/:id/rating-events`。+5 测试 → 59/59。为 Prisma 落地铺好事件溯源。
 - [x] **Phase 2 · Sprint 2 (排行榜缓存层 / ZSET)** — `apps/game-server/src/match/leaderboard.cache.ts`：`LeaderboardCache` 接口（语义对齐 Redis ZSET：setScore / incrBy / remove / scoreOf / rankOf / topN / size）+ `InMemoryZSetLeaderboard` 实现（`(score desc, userId asc)` 稳定排序，二分插入，bot 不入榜）。`MatchService.onFinish` 同步写 cache；`listLeaderboard` 优先走 cache 路径；新增 `GET /api/v1/users/:id/rank` 返回 `{ rank, score, total, tier }`。+14 测试 → 73/73。后续接 ioredis 仅替换 Module Provider。
 - [x] **Phase 3 · 启动 (Replay 事件日志 MVP)** — 新增 `apps/game-server/src/replay/`：`ReplayService`（按 matchId 维护单调 seq 事件流，支持 match_start / play / pass / trick_closed / match_finish）+ REST `GET /api/v1/matches/:id/replay`；`MatchService.getActiveMatchId(roomId)` 暴露当前对局；`GameGateway` 在人类 & bot 出牌路径上同步追加事件。+8 测试 → 81/81。接口与未来 Postgres `match_events` 表对齐，Spectator / 播放器可直接消费。
+- [x] **Phase 3 · Sprint 1 (Replay 播放器 UI)** — `apps/teams-tab/src/components/ReplayPlayer.tsx` + 路由 `/replay/[id]`：拉取 `/api/v1/matches/:id/replay`，事件时间线 + 步进 / 上一步 / 末尾 / 自动播放（0.5x / 1x / 2x / 4x）+ 进度条；座位颜色 + 事件描述（出牌 / 过 / 收墩 / 胜负）。Profile 战绩行新增"回放"入口。teams-tab build 通过（新增 `/replay/[id]` 路由 3.05 kB）。
 
 ## 关键决策
 

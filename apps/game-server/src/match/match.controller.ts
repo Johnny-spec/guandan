@@ -13,7 +13,14 @@ export class MatchController {
   }
 
   @Get('matches')
-  listMatches(@Query('userId') userId: string, @Query('limit') limit?: string) {
+  listMatches(
+    @Query('userId') userId: string,
+    @Query('limit') limit?: string,
+    @Query('cursor') cursor?: string,
+    @Query('since') since?: string,
+    @Query('until') until?: string,
+    @Query('completedOnly') completedOnly?: string,
+  ) {
     if (!userId) {
       return { ok: false, code: 'BAD_REQUEST', message: 'userId required' };
     }
@@ -21,6 +28,18 @@ export class MatchController {
     if (!Number.isFinite(n) || n <= 0) {
       return { ok: false, code: 'BAD_REQUEST', message: 'limit must be > 0' };
     }
+    // 翻页路径：当任何分页/筛选参数出现时返回 page 形态
+    if (cursor || since || until || completedOnly) {
+      const page = this.svc.queryMatchesByUser(userId, {
+        limit: n,
+        cursor: cursor ?? null,
+        since: since ?? null,
+        until: until ?? null,
+        completedOnly: completedOnly === 'true' || completedOnly === '1',
+      });
+      return { ok: true, data: page };
+    }
+    // 旧路径：兼容 v1 客户端，返回数组
     return { ok: true, data: this.svc.listMatchesByUser(userId, n) };
   }
 

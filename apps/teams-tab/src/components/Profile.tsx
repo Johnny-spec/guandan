@@ -25,33 +25,56 @@ export function Profile() {
   const { userId, displayName } = useAuthStore();
   const [me, setMe] = useState<UserDto | null>(null);
   const [matches, setMatches] = useState<MatchDto[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [total, setTotal] = useState<number>(0);
+  const [since, setSince] = useState<string>('');
+  const [until, setUntil] = useState<string>('');
+  const [completedOnly, setCompletedOnly] = useState<boolean>(false);
   const [lb, setLb] = useState<LeaderboardDto[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const load = async () => {
+  const PAGE_SIZE = 20;
+  const toIsoStart = (d: string) => (d ? new Date(`${d}T00:00:00`).toISOString() : null);
+  const toIsoEnd = (d: string) => (d ? new Date(`${d}T23:59:59.999`).toISOString() : null);
+
+  const load = async (append = false) => {
     if (!userId) return;
     setLoading(true);
-    setErr(null);
+    if (!append) setErr(null);
+    const cursor = append ? nextCursor : null;
     const [u, m, l] = await Promise.all([
-      api.getUser(userId),
-      api.listMatches(userId, 20),
-      api.leaderboard(20),
+      append ? Promise.resolve({ ok: true, data: me } as const) : api.getUser(userId),
+      api.queryMatches(userId, {
+        limit: PAGE_SIZE,
+        cursor,
+        since: toIsoStart(since),
+        until: toIsoEnd(until),
+        completedOnly,
+      }),
+      append ? Promise.resolve({ ok: true, data: lb } as const) : api.leaderboard(20),
     ]);
-    if (u.ok) setMe(u.data);
-    else if (u.code !== 'USER_NOT_FOUND') setErr(`${u.code}: ${u.message}`);
-    else setMe(null);
-    if (m.ok) setMatches(m.data);
-    else setErr((e) => e ?? `${m.code}: ${m.message}`);
-    if (l.ok) setLb(l.data);
-    else setErr((e) => e ?? `${l.code}: ${l.message}`);
+    if (!append) {
+      if (u.ok) setMe(u.data);
+      else if (u.code !== 'USER_NOT_FOUND') setErr(`${u.code}: ${u.message}`);
+      else setMe(null);
+      if (l.ok) setLb(l.data);
+      else setErr((e) => e ?? `${l.code}: ${l.message}`);
+    }
+    if (m.ok) {
+      setMatches((prev) => (append ? [...prev, ...m.data.items] : m.data.items));
+      setNextCursor(m.data.nextCursor);
+      setTotal(m.data.total);
+    } else {
+      setErr((e) => e ?? `${m.code}: ${m.message}`);
+    }
     setLoading(false);
   };
 
   useEffect(() => {
-    void load();
+    void load(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, since, until, completedOnly]);
 
   if (!userId) {
     return (
@@ -68,7 +91,7 @@ export function Profile() {
       <nav style={{ marginBottom: 16, display: 'flex', gap: 12 }}>
         <a href="/">← 大厅</a>
         <a href="/leaderboard">排行榜</a>
-        <button onClick={load} disabled={loading} style={{ marginLeft: 'auto' }}>
+        <button onClick={() => load(false)} disabled={loading} style={{ marginLeft: 'auto' }}>
           {loading ? '刷新中…' : '刷新'}
         </button>
       </nav>
@@ -143,7 +166,37 @@ export function Profile() {
         <Card label="胜率" value={`${winRate}%`} />
       </section>
 
-      <h3>最近 20 场</h3>
+      <h3>对局记录 {total > 0 && <span style={{ fontSize: 13, color: '#666' }}>共 {total} 场</span>}</h3>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12, fontSize: 13 }}>
+        <label>
+          起：
+          <input type="date" value={since} onChange={(e) => setSince(e.target.value)} />
+        </label>
+        <label>
+          止：
+          <input type="date" value={until} onChange={(e) => setUntil(e.target.value)} />
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={completedOnly}
+            onChange={(e) => setCompletedOnly(e.target.checked)}
+          />
+          仅已完成
+        </label>
+        {(since || until || completedOnly) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSince('');
+              setUntil('');
+              setCompletedOnly(false);
+            }}
+          >
+            清除筛选
+          </button>
+        )}
+      </div>
       {matches.length === 0 ? (
         <p style={{ color: '#666' }}>还没有对局记录。回大厅开一局吧。</p>
       ) : (
@@ -185,6 +238,14 @@ export function Profile() {
             })}
           </tbody>
         </table>
+      )}
+
+      {nextCursor && (
+        <div style={{ textAlign: 'center', marginTop: 12 }}>
+          <button onClick={() => load(true)} disabled={loading}>
+            {loading ? '加载中…' : '加载更多'}
+          </button>
+        </div>
       )}
 
       <h3 style={{ marginTop: 32 }}>排行榜 Top 20</h3>

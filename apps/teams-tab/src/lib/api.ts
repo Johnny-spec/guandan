@@ -74,9 +74,27 @@ export interface LeaderboardDto {
   tier?: TierDto;
 }
 
+export interface MatchesPageDto {
+  items: MatchDto[];
+  nextCursor: string | null;
+  total: number;
+}
+
 export const api = {
   getUser: (id: string) => getJson<UserDto>(`/api/v1/users/${encodeURIComponent(id)}`),
   listMatches: (userId: string, limit = 20) =>
     getJson<MatchDto[]>(`/api/v1/matches?userId=${encodeURIComponent(userId)}&limit=${limit}`),
+  queryMatches: (
+    userId: string,
+    opts: { limit?: number; cursor?: string | null; since?: string | null; until?: string | null; completedOnly?: boolean } = {},
+  ) => {
+    const params = new URLSearchParams({ userId, limit: String(opts.limit ?? 20) });
+    if (opts.cursor) params.set('cursor', opts.cursor);
+    if (opts.since) params.set('since', opts.since);
+    if (opts.until) params.set('until', opts.until);
+    // 关键：始终带 completedOnly（即便 false），让后端进入 page 模式而非 list 模式
+    params.set('completedOnly', opts.completedOnly ? 'true' : 'false');
+    return getJson<MatchesPageDto>(`/api/v1/matches?${params.toString()}`);
+  },
   leaderboard: (limit = 50) => getJson<LeaderboardDto[]>(`/api/v1/leaderboard?limit=${limit}`),
 };

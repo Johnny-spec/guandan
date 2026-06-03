@@ -195,6 +195,12 @@ export class MatchService {
   listMatchesByUser(userId: string, limit: number): MatchRecord[] {
     return this.repo.listMatchesByUser(userId, Math.min(Math.max(limit, 1), 100));
   }
+  queryMatchesByUser(
+    userId: string,
+    q: { limit: number; cursor?: string | null; since?: string | null; until?: string | null; completedOnly?: boolean },
+  ) {
+    return this.repo.queryMatchesByUser(userId, q);
+  }
   listLeaderboard(limit: number): LeaderboardView[] {
     const entries = this.repo.listLeaderboard(Math.min(Math.max(limit, 1), 100));
     return entries.map((e) => ({ ...e, tier: this.tiers.resolve(e.rating) }));

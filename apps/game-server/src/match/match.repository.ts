@@ -71,6 +71,25 @@ export interface MatchesQuery {
   completedOnly?: boolean;
 }
 
+/** 评分流水事件（与 Prisma `model RatingEvent` 字段对齐）。 */
+export type RatingEventReason =
+  | 'match_win'
+  | 'match_loss'
+  | 'season_reset'
+  | 'admin_adjust';
+
+export interface RatingEventRecord {
+  id: string;
+  userId: string;
+  matchId: string | null;
+  seasonId: string | null;
+  delta: number;
+  ratingBefore: number;
+  ratingAfter: number;
+  reason: RatingEventReason;
+  at: string;
+}
+
 /**
  * 仓储接口（与 Prisma schema 对齐）。Phase 2 Sprint 1 用 InMemory 实现，
  * Sprint 2 加 PrismaMatchRepository 替换；接口保持不变。
@@ -93,6 +112,9 @@ export interface MatchRepository {
   /** 翻页 + 时间筛选；按 startedAt 倒序。 */
   queryMatchesByUser(userId: string, q: MatchesQuery): MatchesPage;
   listLeaderboard(limit: number): LeaderboardEntry[];
+  /** 评分流水写入（事件溯源；users.rating 由此推导）。 */
+  createRatingEvent(e: Omit<RatingEventRecord, 'id' | 'at'> & { id?: string; at?: string }): RatingEventRecord;
+  listRatingEventsByUser(userId: string, limit: number): RatingEventRecord[];
   /** 仅给测试用：清空所有状态。 */
   reset(): void;
 }
@@ -107,6 +129,8 @@ export class InMemoryMatchRepository implements MatchRepository {
   private matches = new Map<string, MatchRecord>();
   /** 最近开始的对局在前（用于"最近 N 场"查询）。 */
   private order: string[] = [];
+  /** userId -> 评分流水（最新在末尾）。 */
+  private ratingEvents = new Map<string, RatingEventRecord[]>();
 
   upsertUser(u: Pick<UserRecord, 'id' | 'displayName' | 'isBot'>): UserRecord {
     const existing = this.users.get(u.id);
@@ -251,6 +275,34 @@ export class InMemoryMatchRepository implements MatchRepository {
     this.users.clear();
     this.matches.clear();
     this.order = [];
+    this.ratingEvents.clear();
+  }
+
+  createRatingEvent(
+    e: Omit<RatingEventRecord, 'id' | 'at'> & { id?: string; at?: string },
+  ): RatingEventRecord {
+    const rec: RatingEventRecord = {
+      id: e.id ?? makeId(),
+      userId: e.userId,
+      matchId: e.matchId ?? null,
+      seasonId: e.seasonId ?? null,
+      delta: e.delta,
+      ratingBefore: e.ratingBefore,
+      ratingAfter: e.ratingAfter,
+      reason: e.reason,
+      at: e.at ?? new Date().toISOString(),
+    };
+    const arr = this.ratingEvents.get(rec.userId) ?? [];
+    arr.push(rec);
+    this.ratingEvents.set(rec.userId, arr);
+    return rec;
+  }
+
+  listRatingEventsByUser(userId: string, limit: number): RatingEventRecord[] {
+    const arr = this.ratingEvents.get(userId) ?? [];
+    const n = Math.min(Math.max(limit, 1), 200);
+    // 最新在前
+    return [...arr].reverse().slice(0, n);
   }
 }
 

@@ -119,13 +119,22 @@ export class MatchService {
     const outcomes = this.rating.compute(inputs, winnerTeam);
     const outcomeByUser = new Map(outcomes.map((o) => [o.userId, o]));
 
-    // 回写 user rating + 累计统计
+    // 回写 user rating + 累计统计 + 评分流水
     for (const s of pending.seats) {
       const out = outcomeByUser.get(s.userId);
       if (!out) continue;
       const won = teamOf(s.seat) === winnerTeam;
       if (!s.isBot) {
         this.repo.setUserRating(s.userId, out.ratingAfter);
+        this.repo.createRatingEvent({
+          userId: s.userId,
+          matchId: pending.matchId,
+          seasonId: null,
+          delta: out.ratingDelta,
+          ratingBefore: out.ratingBefore,
+          ratingAfter: out.ratingAfter,
+          reason: won ? 'match_win' : 'match_loss',
+        });
       }
       this.repo.incUserStats(s.userId, won);
     }
@@ -204,5 +213,8 @@ export class MatchService {
   listLeaderboard(limit: number): LeaderboardView[] {
     const entries = this.repo.listLeaderboard(Math.min(Math.max(limit, 1), 100));
     return entries.map((e) => ({ ...e, tier: this.tiers.resolve(e.rating) }));
+  }
+  listRatingEventsByUser(userId: string, limit: number) {
+    return this.repo.listRatingEventsByUser(userId, Math.min(Math.max(limit, 1), 200));
   }
 }

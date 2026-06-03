@@ -43,6 +43,15 @@ export class MatchController {
     return { ok: true, data: this.svc.listMatchesByUser(userId, n) };
   }
 
+  @Get('users/:id/rating-events')
+  ratingEvents(@Param('id') id: string, @Query('limit') limit?: string) {
+    const n = limit ? Number(limit) : 50;
+    if (!Number.isFinite(n) || n <= 0) {
+      return { ok: false, code: 'BAD_REQUEST', message: 'limit must be > 0' };
+    }
+    return { ok: true, data: this.svc.listRatingEventsByUser(id, n) };
+  }
+
   @Get('leaderboard')
   leaderboard(@Query('limit') limit?: string) {
     const n = limit ? Number(limit) : 50;

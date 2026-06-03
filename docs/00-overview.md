@@ -39,6 +39,7 @@
 - [x] **Phase 2 · Sprint 1 (战绩 / 排行榜 MVP)** — `apps/game-server/src/match/`：`MatchRepository`（InMemory + 接口与 Prisma schema 对齐）、`RatingService`（团队 ELO，K=24）、`MatchService` 接入 `GameGateway` 在 `game:start` / `game:finished` 自动落库与回写评分；REST 控制器 `GET /api/v1/{users/:id,matches,leaderboard}`；teams-tab 新增 `/profile` 与 `/leaderboard` 页面 + 大厅导航。新增 14 个 vitest（rating 7 + match 7），全部测试 38 绿。
 - [x] **Phase 2 · Sprint 2 (Tier 段位计算)** — `apps/game-server/src/match/tier.service.ts`：7 档段位（青铜 → 宗师）+ 进度条计算；MatchService.getUserView / listLeaderboard 自动注入 tier；teams-tab 战绩页加段位 banner + 排行榜列加段位徽章。新增 9 个测试（tier 8 + match 段位 1），测试 48 全绿。
 - [x] **Phase 2 · Sprint 2 (战绩翻页 / 时间筛选)** — `MatchRepository.queryMatchesByUser({limit,cursor,since,until,completedOnly})` 游标分页；REST `/api/v1/matches` 兼容数组与 page 两种形态；teams-tab 战绩页加日期筛选 + 仅已完成 + 加载更多按钮；总场数显示。+6 测试 → 54/54。
+- [x] **Phase 2 · Sprint 2 (RatingEvent 流水)** — `MatchRepository.createRatingEvent / listRatingEventsByUser`（与 Prisma `model RatingEvent` 字段对齐）；`MatchService.onFinish` 为每个人类玩家写一条 `match_win` / `match_loss` 流水；新增 `GET /api/v1/users/:id/rating-events`。+5 测试 → 59/59。为 Prisma 落地铺好事件溯源。
 
 ## 关键决策
 

@@ -144,7 +144,7 @@ gantt
 | ~~Referee Gateway 联动 (`referee:kick` / `referee:force_end`)~~ | Referee/Server | ✅ Done (RoomService kick/forceEnd + Gateway 广播 `room:kicked` / `game:aborted` / `referee:action`) |
 | 观战入口 UI（teams-tab Spectate 按钮 + 公开视图） | Frontend | ✅ Done (Lobby 增加"观战"按钮 + 新路由 `/spectate/[id]`：`SpectatorTable` 复用牌桌布局 + 仅显示公开 lastPlay + `spectate:leave` 退出) |
 | Spectator socket e2e 测试 | QA | ✅ Done (`socket.spectator.e2e.test.ts`：host + 3 bots + spectator 一局；断言 spectator 收到 `room:updated` / `game:played` / `game:passed` 但不接收 `game:state`，`spectate:leave` 后停止接收) |
-| Referee admin-panel 审计页 | Frontend | ⏳ Todo |
+| Referee admin-panel 审计页 | Frontend | ✅ Done (`apps/admin-panel/app/referee/page.tsx`：裁判角色管理 + 审计日志过滤（roomId / 裁判 / 目标 / kind / limit）+ Fluent 简表 + 颜色化 kind；`src/lib/api.ts` 封装 `NEXT_PUBLIC_GAME_SERVER_URL` + apiGet/apiSend；首页加 `/referee` 入口) |
 | Referee 实时事件（warn / mute / unmute 广播） | Referee/Server | ✅ Done (RoomService mute/unmute 状态 + Gateway `referee:warn` / `referee:mute` / `referee:unmute` 三命令；isMuted 网关侧拦截钩子已就位待 Phase 4 聊天接入) |
 
 ### 历史 Sprint 简记

@@ -44,6 +44,7 @@
 - [x] **Phase 3 · 启动 (Replay 事件日志 MVP)** — 新增 `apps/game-server/src/replay/`：`ReplayService`（按 matchId 维护单调 seq 事件流，支持 match_start / play / pass / trick_closed / match_finish）+ REST `GET /api/v1/matches/:id/replay`；`MatchService.getActiveMatchId(roomId)` 暴露当前对局；`GameGateway` 在人类 & bot 出牌路径上同步追加事件。+8 测试 → 81/81。接口与未来 Postgres `match_events` 表对齐，Spectator / 播放器可直接消费。
 - [x] **Phase 3 · Sprint 1 (Replay 播放器 UI)** — `apps/teams-tab/src/components/ReplayPlayer.tsx` + 路由 `/replay/[id]`：拉取 `/api/v1/matches/:id/replay`，事件时间线 + 步进 / 上一步 / 末尾 / 自动播放（0.5x / 1x / 2x / 4x）+ 进度条；座位颜色 + 事件描述（出牌 / 过 / 收墩 / 胜负）。Profile 战绩行新增"回放"入口。teams-tab build 通过（新增 `/replay/[id]` 路由 3.05 kB）。
 - [x] **Phase 3 · Sprint 1 (观战模式 spectator socket room)** — `RoomService` 新增观战者状态（`spectators` Map + `spectatorRoom` 反查）；Gateway 增加 `spectate:join` / `spectate:leave` 命令（自动 join socket.io 房间 → 接收所有公开广播；不接收私有 `game:state`，无法出牌）；断线钩子 `detachSpectator` 自动清理；`RoomDetail.spectatorIds` 正确填充；唯一玩家退出但仍有观战者时房间保留。+13 测试 → 94/94 全绿。
+- [x] **Phase 3 · Sprint 1 (Referee 后台基础)** — 新增 `apps/game-server/src/referee/`：`RefereeService`（角色注册 + 审计日志：warn / mute / unmute / kick / force_end / note，全局单调递增 id）+ REST `POST/GET/DELETE /api/v1/referee/roles[/:userId]`、`POST/GET /api/v1/referee/actions`；字段校验（warn/mute/unmute/kick 必填 targetUserId）；角色与日志解耦（撤销角色不回滚历史）；list 支持 roomId/matchId/refereeUserId/targetUserId/kind/sinceMs/limit 多维过滤。+18 测试 → 112/112 全绿。
 
 ## 关键决策
 

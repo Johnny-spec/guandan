@@ -100,6 +100,24 @@ export function Lobby() {
     }
   };
 
+  const onSpectate = async () => {
+    const id = joinId.trim();
+    if (!id) return;
+    setBusy(true);
+    try {
+      const r = await emitAck('spectate:join', { roomId: id });
+      if (!r.ok) {
+        showToast('error', `${r.code}: ${r.message}`);
+        return;
+      }
+      window.location.href = `/spectate/${id}`;
+    } catch (e) {
+      showToast('error', (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div style={{ maxWidth: 720, margin: '32px auto', padding: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -148,6 +166,13 @@ export function Lobby() {
             onClick={onJoin}
           >
             加入
+          </Button>
+          <Button
+            style={{ marginTop: 8, marginLeft: 8 }}
+            disabled={!connected || !joinId.trim() || busy}
+            onClick={onSpectate}
+          >
+            观战
           </Button>
         </div>
       </div>

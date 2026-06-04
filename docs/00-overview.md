@@ -48,6 +48,7 @@
 - [x] **Phase 3 · Sprint 2 (Referee Gateway 实战联动)** — `RoomService.kickMember` / `forceEndSession`（前者复用 leaveRoom 清理 + 自动让位 / 空房销毁；后者只清 `session` 返回 `hadSession`）；socket-protocol 新增 `referee:kick` / `referee:force_end` 客户端事件、`game:aborted` / `room:kicked` / `referee:action` 服务端事件、`NOT_REFEREE` 错误码；`GameGateway` 注入 `RefereeService`：校验 `isReferee` → RoomService 执行 → 写审计 → 广播 `referee:action` + `room:updated`；force_end 额外调用 `MatchService.onAbort` + `bots.cancel` 并广播 `game:aborted`，kick 单播 `room:kicked` 给被踢者后离房。+8 测试（room.service.referee）→ 120/120 全绿。
 - [x] **Phase 3 · Sprint 2 (Referee 实时事件 warn / mute / unmute)** — `RoomService` 新增 `mutedUsers` Set + `muteMember` / `unmuteMember` / `isMuted`（幂等，目标须在房）；socket-protocol 增加 `referee:warn` / `referee:mute` / `referee:unmute` 三命令；`GameGateway` 增 3 handlers：鉴权 `isReferee` → mute/unmute 更新房间状态 → 写审计 → 广播 `referee:action`（mute/unmute 附带 `room:updated`）。`isMuted` 已就位为 Phase 4 聊天广播提供拦截钩子。+6 测试 → 126/126 全绿。
 - [x] **Phase 3 · Sprint 2 (Spectator socket e2e)** — `socket.spectator.e2e.test.ts`：实际拉起 Nest + socket.io，host + 3 bots + spectator 联机一局；断言 spectator 收到 `room:updated` / 大量 `game:played` & `game:passed` 但 `game:state` 0 次、`spectate:leave` 后停止接收后续 `room:updated`。+1 e2e 测试 → 127/127 全绿。
+- [x] **Phase 3 · Sprint 2 (观战入口 UI)** — `apps/teams-tab` 增加 Lobby「观战」按钮（与「加入」共享房间号输入），新路由 `/spectate/[id]`；新组件 `SpectatorTable` 复用牌桌布局 + 中央 lastPlay + 头部观战人数 + 「退出观战」按钮（`spectate:leave`）。teams-tab build 通过（`/spectate/[id]` 3.53 kB）。
 
 ## 关键决策
 

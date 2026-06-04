@@ -50,6 +50,7 @@
 - [x] **Phase 3 · Sprint 2 (Spectator socket e2e)** — `socket.spectator.e2e.test.ts`：实际拉起 Nest + socket.io，host + 3 bots + spectator 联机一局；断言 spectator 收到 `room:updated` / 大量 `game:played` & `game:passed` 但 `game:state` 0 次、`spectate:leave` 后停止接收后续 `room:updated`。+1 e2e 测试 → 127/127 全绿。
 - [x] **Phase 3 · Sprint 2 (观战入口 UI)** — `apps/teams-tab` 增加 Lobby「观战」按钮（与「加入」共享房间号输入），新路由 `/spectate/[id]`；新组件 `SpectatorTable` 复用牌桌布局 + 中央 lastPlay + 头部观战人数 + 「退出观战」按钮（`spectate:leave`）。teams-tab build 通过（`/spectate/[id]` 3.53 kB）。
 - [x] **Phase 3 · Sprint 2 收官 (Referee admin-panel 审计页)** — `apps/admin-panel/app/referee/page.tsx`：裁判角色管理（授权 / 撤销） + 审计日志多维过滤（roomId / refereeUserId / targetUserId / kind / limit）+ 简表 + kind 颜色化 + 错误兜底；`src/lib/api.ts` 封装 `NEXT_PUBLIC_GAME_SERVER_URL` 与 `apiGet` / `apiSend`；首页加 `/referee` 入口。`pnpm --filter @teams-guandan/admin-panel build` ✅（`/referee` 2.69 kB），typecheck 9/9，tests 182/182（55 + 127）。**Phase 3 · Sprint 2 全部 ✅，可开 Sprint 3。**
+- [x] **Phase 3 · Sprint 3 启动 (Replay JSONL 文件持久化)** — `apps/game-server/src/replay/replay.store.ts`：`ReplayStore` 接口 + `InMemoryReplayStore`（默认）+ `JsonlReplayStore`（每 matchId 一个 `.jsonl`，`appendFileSync` 顺序写入，懒加载缓存，路径白名单 `/^[A-Za-z0-9_-]+$/` 防注入）。`ReplayService` 通过 `@Optional() @Inject(REPLAY_STORE)` 委托给 store，构造函数兼容旧的 `new ReplayService()` 用法；`finishedAtMs` 改为派生（扫描首次 match_finish），去掉内部 `finishedAt` map。`ReplayModule` 工厂按 `REPLAY_DIR` env 切换实现，重启后回放仍可访问。+10 测试（store 单元 + service 集成 + 路径注入防护）→ 137/137（game-server）/ 192/192（总）。
 
 ## 关键决策
 

@@ -137,6 +137,16 @@ gantt
 | ~~观战模式（spectator socket room）~~ | Spectator/Server | ✅ Done (RoomService 观战状态 + `spectate:join` / `spectate:leave` + 断线清理) |
 | ~~Referee 后台基础（裁判操作审计）~~ | Referee/Server | ✅ Done (RefereeService 角色注册 + 审计日志 + REST `/api/v1/referee/{roles,actions}`) |
 
+#### Phase 3 · Sprint 2 看板（裁判 / 观战实战联动）
+
+| Lane | Owner | 状态 |
+| --- | --- | --- |
+| ~~Referee Gateway 联动 (`referee:kick` / `referee:force_end`)~~ | Referee/Server | ✅ Done (RoomService kick/forceEnd + Gateway 广播 `room:kicked` / `game:aborted` / `referee:action`) |
+| 观战入口 UI（teams-tab Spectate 按钮 + 公开视图） | Frontend | ⏳ Todo |
+| Spectator socket e2e 测试 | QA | ⏳ Todo |
+| Referee admin-panel 审计页 | Frontend | ⏳ Todo |
+| Referee 实时事件（warn / mute / unmute 广播） | Referee/Server | ⏳ Todo |
+
 ### 历史 Sprint 简记
 
 - **Sprint 1 (Phase 2)** — 战绩 + 排行榜 MVP（内存仓储），见 [00-overview.md 当前进度](./00-overview.md)。

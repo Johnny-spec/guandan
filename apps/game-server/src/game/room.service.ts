@@ -199,6 +199,50 @@ export class RoomService {
     return { ok: true, room: this.toDetail(room) };
   }
 
+  // ---- 裁判 (referee) 强制操作 ----
+
+  /**
+   * 裁判踢人：无视 host 权限直接移除成员。
+   * 与 leaveRoom 区别：不要求是被踢者本人发起。
+   * 返回 (a) 是否真的踢出了某人；(b) 更新后的 RoomDetail（房间已空则 null）。
+   */
+  kickMember(
+    roomId: string,
+    targetUserId: string,
+  ): { ok: true; room: RoomDetail | null; kicked: boolean } | DomainError {
+    const room = this.rooms.get(roomId);
+    if (!room) return { ok: false, code: 'ROOM_NOT_FOUND', message: roomId };
+    if (!room.members.has(targetUserId)) {
+      return { ok: false, code: 'NOT_IN_ROOM', message: targetUserId };
+    }
+    room.members.delete(targetUserId);
+    this.userRoom.delete(targetUserId);
+    // 房主被踢 → 顺位让位（与 leaveRoom 一致）
+    if (room.hostUserId === targetUserId) {
+      const next = [...room.members.values()][0];
+      if (next) room.hostUserId = next.userId;
+    }
+    if (room.members.size === 0 && room.spectators.size === 0) {
+      this.rooms.delete(roomId);
+      this.logger.log(`room ${roomId} disposed (kick last member)`);
+      return { ok: true, room: null, kicked: true };
+    }
+    this.logger.log(`[referee] kick ${targetUserId} from ${roomId}`);
+    return { ok: true, room: this.toDetail(room), kicked: true };
+  }
+
+  /** 裁判强结：清掉当前 session（房间保留，回到 idle）。 */
+  forceEndSession(
+    roomId: string,
+  ): { ok: true; room: RoomDetail; hadSession: boolean } | DomainError {
+    const room = this.rooms.get(roomId);
+    if (!room) return { ok: false, code: 'ROOM_NOT_FOUND', message: roomId };
+    const hadSession = room.session !== null;
+    room.session = null;
+    if (hadSession) this.logger.log(`[referee] force-end session of ${roomId}`);
+    return { ok: true, room: this.toDetail(room), hadSession };
+  }
+
   /** seat → member（含 bot），供 BotService / Gateway 反查。 */
   memberAtSeat(room: Room, seat: Seat): Member | null {
     for (const m of room.members.values()) if (m.seat === seat) return m;

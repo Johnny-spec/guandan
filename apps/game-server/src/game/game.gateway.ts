@@ -26,6 +26,7 @@ import { RoomService, type Room } from './room.service.js';
 import { BotService, type BotTurnOutcome } from '../ai/bot.service.js';
 import { MatchService, type MatchSeat } from '../match/match.service.js';
 import { ReplayService } from '../replay/replay.service.js';
+import { RefereeService } from '../referee/referee.service.js';
 
 type Sock = Socket<ClientToServerEvents, ServerToClientEvents>;
 type Srv = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -52,6 +53,7 @@ export class GameGateway
     @Inject(BotService) private readonly bots: BotService,
     @Inject(MatchService) private readonly matches: MatchService,
     @Inject(ReplayService) private readonly replay: ReplayService,
+    @Inject(RefereeService) private readonly referee: RefereeService,
   ) {}
 
   afterInit(server: Srv) {
@@ -308,6 +310,93 @@ export class GameGateway
     if (!r.ok) return err(r.code, r.message);
     await client.leave(body.roomId);
     if (r.room) this.server.to(body.roomId).emit('room:updated', r.room);
+    return { ok: true, data: undefined };
+  }
+
+  @SubscribeMessage('referee:kick')
+  async onRefereeKick(
+    @ConnectedSocket() client: Sock,
+    @MessageBody() body: { roomId: string; targetUserId: string; reason?: string },
+  ): Promise<AckResult> {
+    const user = (client.data as { user: AuthenticatedUser }).user;
+    if (!this.referee.isReferee(user.userId)) {
+      return err('NOT_REFEREE', user.userId);
+    }
+    const matchId = this.matches.getActiveMatchId(body.roomId) ?? undefined;
+    const r = this.rooms.kickMember(body.roomId, body.targetUserId);
+    if (!r.ok) return err(r.code, r.message);
+    const action = this.referee.recordAction({
+      refereeUserId: user.userId,
+      kind: 'kick',
+      roomId: body.roomId,
+      targetUserId: body.targetUserId,
+      ...(matchId ? { matchId } : {}),
+      ...(body.reason ? { reason: body.reason } : {}),
+    });
+    // 单播给被踢者
+    const victimSock = this.userSocket.get(body.targetUserId);
+    if (victimSock) {
+      const sock = (this.server as unknown as Namespace<ClientToServerEvents, ServerToClientEvents>)
+        .sockets.get(victimSock) as Sock | undefined;
+      if (sock) {
+        sock.emit('room:kicked', {
+          roomId: body.roomId,
+          refereeUserId: user.userId,
+          ...(body.reason ? { reason: body.reason } : {}),
+        });
+        await sock.leave(body.roomId);
+      }
+    }
+    if (r.room) this.server.to(body.roomId).emit('room:updated', r.room);
+    this.server.to(body.roomId).emit('referee:action', {
+      id: action.id,
+      roomId: action.roomId,
+      refereeUserId: action.refereeUserId,
+      kind: action.kind,
+      tsMs: action.tsMs,
+      ...(action.targetUserId ? { targetUserId: action.targetUserId } : {}),
+      ...(action.reason ? { reason: action.reason } : {}),
+    });
+    return { ok: true, data: undefined };
+  }
+
+  @SubscribeMessage('referee:force_end')
+  onRefereeForceEnd(
+    @ConnectedSocket() client: Sock,
+    @MessageBody() body: { roomId: string; reason?: string },
+  ): AckResult {
+    const user = (client.data as { user: AuthenticatedUser }).user;
+    if (!this.referee.isReferee(user.userId)) {
+      return err('NOT_REFEREE', user.userId);
+    }
+    const matchId = this.matches.getActiveMatchId(body.roomId) ?? undefined;
+    const r = this.rooms.forceEndSession(body.roomId);
+    if (!r.ok) return err(r.code, r.message);
+    if (r.hadSession) {
+      this.matches.onAbort(body.roomId);
+      this.bots.cancel(body.roomId);
+    }
+    const action = this.referee.recordAction({
+      refereeUserId: user.userId,
+      kind: 'force_end',
+      roomId: body.roomId,
+      ...(matchId ? { matchId } : {}),
+      ...(body.reason ? { reason: body.reason } : {}),
+    });
+    this.server.to(body.roomId).emit('room:updated', r.room);
+    this.server.to(body.roomId).emit('game:aborted', {
+      roomId: body.roomId,
+      refereeUserId: user.userId,
+      ...(body.reason ? { reason: body.reason } : {}),
+    });
+    this.server.to(body.roomId).emit('referee:action', {
+      id: action.id,
+      roomId: action.roomId,
+      refereeUserId: action.refereeUserId,
+      kind: action.kind,
+      tsMs: action.tsMs,
+      ...(action.reason ? { reason: action.reason } : {}),
+    });
     return { ok: true, data: undefined };
   }
 

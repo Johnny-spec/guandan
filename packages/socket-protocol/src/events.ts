@@ -55,6 +55,14 @@ export interface ClientToServerEvents {
     payload: { roomId: string },
     ack: (res: AckResult) => void,
   ) => void;
+  'referee:kick': (
+    payload: { roomId: string; targetUserId: string; reason?: string },
+    ack: (res: AckResult) => void,
+  ) => void;
+  'referee:force_end': (
+    payload: { roomId: string; reason?: string },
+    ack: (res: AckResult) => void,
+  ) => void;
   'ping': (ack: (serverTime: number) => void) => void;
 }
 
@@ -76,6 +84,20 @@ export interface ServerToClientEvents {
     nextLevel: string;
   }) => void;
   'chat:message': (payload: { from: string; text: string; at: number }) => void;
+  /** 裁判强制结束当前对局（房间状态回到 idle）。 */
+  'game:aborted': (payload: { roomId: string; refereeUserId: string; reason?: string }) => void;
+  /** 单播：被裁判踢出房间。 */
+  'room:kicked': (payload: { roomId: string; refereeUserId: string; reason?: string }) => void;
+  /** 广播：裁判产生了一次审计动作（前端可弹通知）。 */
+  'referee:action': (payload: {
+    id: number;
+    roomId: string;
+    refereeUserId: string;
+    kind: 'warn' | 'mute' | 'unmute' | 'kick' | 'force_end' | 'note';
+    targetUserId?: string;
+    reason?: string;
+    tsMs: number;
+  }) => void;
   'error': (payload: { code: string; message: string }) => void;
 }
 
@@ -102,5 +124,6 @@ export const ERROR_CODES = {
   GAME_ALREADY_STARTED: 'GAME_ALREADY_STARTED',
   NOT_A_BOT: 'NOT_A_BOT',
   ALREADY_SPECTATING: 'ALREADY_SPECTATING',
+  NOT_REFEREE: 'NOT_REFEREE',
 } as const;
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

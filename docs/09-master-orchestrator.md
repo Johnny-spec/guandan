@@ -134,7 +134,7 @@ gantt
 | --- | --- | --- |
 | ~~Replay 事件日志（内存版）+ REST `/api/v1/matches/:id/replay`~~ | Replay/Server | ✅ Done (接口对齐未来 Postgres `match_events` 表) |
 | ~~Replay 播放器 UI（teams-tab）~~ | Frontend | ✅ Done (`/replay/[id]` 步进/自动播放/速度切换 + Profile 行内"回放"入口) |
-| 观战模式（spectator socket room） | Spectator/Server | ⏳ Todo |
+| ~~观战模式（spectator socket room）~~ | Spectator/Server | ✅ Done (RoomService 观战状态 + `spectate:join` / `spectate:leave` + 断线清理) |
 | Referee 后台基础（裁判操作审计） | Referee/Server | ⏳ Todo |
 
 ### 历史 Sprint 简记

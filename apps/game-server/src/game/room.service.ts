@@ -21,11 +21,18 @@ export interface Member {
   botDifficulty?: 'easy' | 'normal' | 'hard';
 }
 
+export interface Spectator {
+  userId: string;
+  displayName: string;
+}
+
 export interface Room {
   id: string;
   hostUserId: string;
   visibility: RoomVisibility;
   members: Map<string, Member>;
+  /** 观战者（不参与出牌，仅接收公开广播 + room:updated）。 */
+  spectators: Map<string, Spectator>;
   level: GameLevel;
   createdAt: string;
   session: GameSession | null;
@@ -43,6 +50,8 @@ export class RoomService {
   private readonly rooms = new Map<string, Room>();
   /** userId → roomId，用于断线重连快速定位。 */
   private readonly userRoom = new Map<string, string>();
+  /** userId → roomId，观战所在房间（与 userRoom 互斥：玩家不能同时观战）。 */
+  private readonly spectatorRoom = new Map<string, string>();
 
   createRoom(
     hostUserId: string,
@@ -58,6 +67,7 @@ export class RoomService {
       hostUserId,
       visibility,
       members: new Map(),
+      spectators: new Map(),
       level: '2',
       createdAt: new Date().toISOString(),
       session: null,
@@ -112,15 +122,15 @@ export class RoomService {
       return { ok: false, code: 'NOT_IN_ROOM', message: userId };
     room.members.delete(userId);
     this.userRoom.delete(userId);
-    if (room.members.size === 0) {
+    if (room.members.size === 0 && room.spectators.size === 0) {
       this.rooms.delete(roomId);
       this.logger.log(`room ${roomId} disposed (empty)`);
       return { ok: true, room: null };
     }
     if (room.hostUserId === userId) {
-      // 房主离开 → 顺位让位给下一名成员
-      const next = [...room.members.values()][0]!;
-      room.hostUserId = next.userId;
+      // 房主离开 → 顺位让位给下一名成员（若已无成员、仅剩观战者，则保留原 hostUserId 占位）
+      const next = [...room.members.values()][0];
+      if (next) room.hostUserId = next.userId;
     }
     return { ok: true, room: this.toDetail(room) };
   }
@@ -235,11 +245,77 @@ export class RoomService {
       hostUserId: room.hostUserId,
       visibility: room.visibility,
       seats,
-      spectatorIds: [],
+      spectatorIds: [...room.spectators.keys()],
       level: room.level,
       phase: room.session ? 'playing' : 'idle',
       createdAt: room.createdAt,
     };
+  }
+
+  // -------------------------- 观战 spectator API --------------------------
+
+  /** 添加观战者：用户不可同时是玩家 / 已在其它房间观战。 */
+  addSpectator(
+    roomId: string,
+    userId: string,
+    displayName: string,
+  ): { ok: true; room: RoomDetail } | DomainError {
+    const room = this.rooms.get(roomId);
+    if (!room) return { ok: false, code: 'ROOM_NOT_FOUND', message: roomId };
+    if (this.userRoom.get(userId)) {
+      return { ok: false, code: 'ALREADY_IN_ROOM', message: 'leave current room first' };
+    }
+    const existing = this.spectatorRoom.get(userId);
+    if (existing && existing !== roomId) {
+      return { ok: false, code: 'ALREADY_SPECTATING', message: existing };
+    }
+    if (!room.spectators.has(userId)) {
+      room.spectators.set(userId, { userId, displayName });
+      this.spectatorRoom.set(userId, roomId);
+      this.logger.log(`spectator ${userId} joined ${roomId}`);
+    }
+    return { ok: true, room: this.toDetail(room) };
+  }
+
+  /** 移除观战者（幂等）。返回更新后 RoomDetail；若房间已空且无成员，会清理房间。 */
+  removeSpectator(
+    roomId: string,
+    userId: string,
+  ): { ok: true; room: RoomDetail | null } | DomainError {
+    const room = this.rooms.get(roomId);
+    if (!room) return { ok: false, code: 'ROOM_NOT_FOUND', message: roomId };
+    if (!room.spectators.has(userId)) {
+      // 幂等：不报错
+      return { ok: true, room: this.toDetail(room) };
+    }
+    room.spectators.delete(userId);
+    if (this.spectatorRoom.get(userId) === roomId) this.spectatorRoom.delete(userId);
+    if (room.members.size === 0 && room.spectators.size === 0) {
+      this.rooms.delete(roomId);
+      this.logger.log(`room ${roomId} disposed (empty after spectator leave)`);
+      return { ok: true, room: null };
+    }
+    return { ok: true, room: this.toDetail(room) };
+  }
+
+  /** 用户断线时调用：若是观战者则移除并返回房间信息。 */
+  detachSpectator(
+    userId: string,
+  ): { roomId: string; room: RoomDetail | null } | null {
+    const roomId = this.spectatorRoom.get(userId);
+    if (!roomId) return null;
+    const r = this.removeSpectator(roomId, userId);
+    if (!r.ok) return null;
+    return { roomId, room: r.room };
+  }
+
+  isSpectator(roomId: string, userId: string): boolean {
+    return this.rooms.get(roomId)?.spectators.has(userId) ?? false;
+  }
+
+  getSpectatorRoom(userId: string): Room | null {
+    const id = this.spectatorRoom.get(userId);
+    return id ? (this.rooms.get(id) ?? null) : null;
   }
 
   toDetail(room: Room): RoomDetail {

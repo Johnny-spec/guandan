@@ -47,6 +47,14 @@ export interface ClientToServerEvents {
     payload: { roomId: string; botUserId: string },
     ack: (res: AckResult<RoomDetail>) => void,
   ) => void;
+  'spectate:join': (
+    payload: { roomId: string },
+    ack: (res: AckResult<RoomDetail>) => void,
+  ) => void;
+  'spectate:leave': (
+    payload: { roomId: string },
+    ack: (res: AckResult) => void,
+  ) => void;
   'ping': (ack: (serverTime: number) => void) => void;
 }
 
@@ -93,5 +101,6 @@ export const ERROR_CODES = {
   UNKNOWN_CARD: 'UNKNOWN_CARD',
   GAME_ALREADY_STARTED: 'GAME_ALREADY_STARTED',
   NOT_A_BOT: 'NOT_A_BOT',
+  ALREADY_SPECTATING: 'ALREADY_SPECTATING',
 } as const;
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

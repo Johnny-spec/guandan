@@ -73,13 +73,19 @@ export class GameGateway
     this.matches.upsertHuman(user.userId, user.displayName);
     this.logger.log(`[connect] ${user.userId} sock=${client.id}`);
 
-    // 重连：若已在某房间，自动 join socket.io room 并推私有快照
+    // 重连：若已在某房间（玩家或观战者），自动 join socket.io room 并推私有快照
     const room = this.rooms.getRoomForUser(user.userId);
     if (room) {
       void client.join(room.id);
       const detail = this.rooms.toDetail(room);
       client.emit('room:updated', detail);
       if (room.session) this.emitPrivateSnapshot(client, room, detail);
+    } else {
+      const specRoom = this.rooms.getSpectatorRoom(user.userId);
+      if (specRoom) {
+        void client.join(specRoom.id);
+        client.emit('room:updated', this.rooms.toDetail(specRoom));
+      }
     }
   }
 
@@ -92,6 +98,10 @@ export class GameGateway
     const res = this.rooms.markOffline(user.userId);
     if (res) {
       this.server.to(res.roomId).emit('room:updated', res.room);
+    }
+    const spec = this.rooms.detachSpectator(user.userId);
+    if (spec?.room) {
+      this.server.to(spec.roomId).emit('room:updated', spec.room);
     }
     this.logger.log(`[disconnect] ${user.userId}`);
   }
@@ -272,6 +282,32 @@ export class GameGateway
     }
     this.broadcastPrivateSnapshots(body.roomId);
     this.scheduleBot(body.roomId);
+    return { ok: true, data: undefined };
+  }
+
+  @SubscribeMessage('spectate:join')
+  async onSpectateJoin(
+    @ConnectedSocket() client: Sock,
+    @MessageBody() body: { roomId: string },
+  ): Promise<AckResult<RoomDetail>> {
+    const user = (client.data as { user: AuthenticatedUser }).user;
+    const r = this.rooms.addSpectator(body.roomId, user.userId, user.displayName);
+    if (!r.ok) return err(r.code, r.message);
+    await client.join(body.roomId);
+    this.server.to(body.roomId).emit('room:updated', r.room);
+    return { ok: true, data: r.room };
+  }
+
+  @SubscribeMessage('spectate:leave')
+  async onSpectateLeave(
+    @ConnectedSocket() client: Sock,
+    @MessageBody() body: { roomId: string },
+  ): Promise<AckResult> {
+    const user = (client.data as { user: AuthenticatedUser }).user;
+    const r = this.rooms.removeSpectator(body.roomId, user.userId);
+    if (!r.ok) return err(r.code, r.message);
+    await client.leave(body.roomId);
+    if (r.room) this.server.to(body.roomId).emit('room:updated', r.room);
     return { ok: true, data: undefined };
   }
 

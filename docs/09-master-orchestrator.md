@@ -143,7 +143,7 @@ gantt
 | --- | --- | --- |
 | ~~Referee Gateway 联动 (`referee:kick` / `referee:force_end`)~~ | Referee/Server | ✅ Done (RoomService kick/forceEnd + Gateway 广播 `room:kicked` / `game:aborted` / `referee:action`) |
 | 观战入口 UI（teams-tab Spectate 按钮 + 公开视图） | Frontend | ⏳ Todo |
-| Spectator socket e2e 测试 | QA | ⏳ Todo |
+| Spectator socket e2e 测试 | QA | ✅ Done (`socket.spectator.e2e.test.ts`：host + 3 bots + spectator 一局；断言 spectator 收到 `room:updated` / `game:played` / `game:passed` 但不接收 `game:state`，`spectate:leave` 后停止接收) |
 | Referee admin-panel 审计页 | Frontend | ⏳ Todo |
 | Referee 实时事件（warn / mute / unmute 广播） | Referee/Server | ✅ Done (RoomService mute/unmute 状态 + Gateway `referee:warn` / `referee:mute` / `referee:unmute` 三命令；isMuted 网关侧拦截钩子已就位待 Phase 4 聊天接入) |
 

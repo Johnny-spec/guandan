@@ -400,6 +400,82 @@ export class GameGateway
     return { ok: true, data: undefined };
   }
 
+  @SubscribeMessage('referee:warn')
+  onRefereeWarn(
+    @ConnectedSocket() client: Sock,
+    @MessageBody() body: { roomId: string; targetUserId: string; reason?: string },
+  ): AckResult {
+    return this.broadcastSimpleReferee(client, 'warn', body);
+  }
+
+  @SubscribeMessage('referee:mute')
+  onRefereeMute(
+    @ConnectedSocket() client: Sock,
+    @MessageBody() body: { roomId: string; targetUserId: string; reason?: string },
+  ): AckResult {
+    const user = (client.data as { user: AuthenticatedUser }).user;
+    if (!this.referee.isReferee(user.userId)) return err('NOT_REFEREE', user.userId);
+    const r = this.rooms.muteMember(body.roomId, body.targetUserId);
+    if (!r.ok) return err(r.code, r.message);
+    this.recordAndBroadcastReferee(user.userId, 'mute', body.roomId, body.targetUserId, body.reason);
+    this.server.to(body.roomId).emit('room:updated', r.room);
+    return { ok: true, data: undefined };
+  }
+
+  @SubscribeMessage('referee:unmute')
+  onRefereeUnmute(
+    @ConnectedSocket() client: Sock,
+    @MessageBody() body: { roomId: string; targetUserId: string; reason?: string },
+  ): AckResult {
+    const user = (client.data as { user: AuthenticatedUser }).user;
+    if (!this.referee.isReferee(user.userId)) return err('NOT_REFEREE', user.userId);
+    const r = this.rooms.unmuteMember(body.roomId, body.targetUserId);
+    if (!r.ok) return err(r.code, r.message);
+    this.recordAndBroadcastReferee(user.userId, 'unmute', body.roomId, body.targetUserId, body.reason);
+    this.server.to(body.roomId).emit('room:updated', r.room);
+    return { ok: true, data: undefined };
+  }
+
+  /** warn 不改变房间状态，仅审计 + 广播。 */
+  private broadcastSimpleReferee(
+    client: Sock,
+    kind: 'warn',
+    body: { roomId: string; targetUserId: string; reason?: string },
+  ): AckResult {
+    const user = (client.data as { user: AuthenticatedUser }).user;
+    if (!this.referee.isReferee(user.userId)) return err('NOT_REFEREE', user.userId);
+    if (!this.rooms.getRoom(body.roomId)) return err('ROOM_NOT_FOUND', body.roomId);
+    this.recordAndBroadcastReferee(user.userId, kind, body.roomId, body.targetUserId, body.reason);
+    return { ok: true, data: undefined };
+  }
+
+  private recordAndBroadcastReferee(
+    refereeUserId: string,
+    kind: 'warn' | 'mute' | 'unmute',
+    roomId: string,
+    targetUserId: string,
+    reason: string | undefined,
+  ): void {
+    const matchId = this.matches.getActiveMatchId(roomId) ?? undefined;
+    const action = this.referee.recordAction({
+      refereeUserId,
+      kind,
+      roomId,
+      targetUserId,
+      ...(matchId ? { matchId } : {}),
+      ...(reason ? { reason } : {}),
+    });
+    this.server.to(roomId).emit('referee:action', {
+      id: action.id,
+      roomId: action.roomId,
+      refereeUserId: action.refereeUserId,
+      kind: action.kind,
+      tsMs: action.tsMs,
+      ...(action.targetUserId ? { targetUserId: action.targetUserId } : {}),
+      ...(action.reason ? { reason: action.reason } : {}),
+    });
+  }
+
   @SubscribeMessage('ping')
   onPing(): number {
     return Date.now();

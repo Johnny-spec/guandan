@@ -63,6 +63,18 @@ export interface ClientToServerEvents {
     payload: { roomId: string; reason?: string },
     ack: (res: AckResult) => void,
   ) => void;
+  'referee:warn': (
+    payload: { roomId: string; targetUserId: string; reason?: string },
+    ack: (res: AckResult) => void,
+  ) => void;
+  'referee:mute': (
+    payload: { roomId: string; targetUserId: string; reason?: string },
+    ack: (res: AckResult) => void,
+  ) => void;
+  'referee:unmute': (
+    payload: { roomId: string; targetUserId: string; reason?: string },
+    ack: (res: AckResult) => void,
+  ) => void;
   'ping': (ack: (serverTime: number) => void) => void;
 }
 

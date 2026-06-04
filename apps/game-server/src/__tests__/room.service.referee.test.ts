@@ -92,4 +92,57 @@ describe('RoomService · referee actions', () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe('ROOM_NOT_FOUND');
   });
+
+  it('muteMember 标记禁言状态并幂等', () => {
+    const svc = new RoomService();
+    const id = fullRoom(svc);
+    expect(svc.isMuted(id, 'u2')).toBe(false);
+    const r1 = svc.muteMember(id, 'u2');
+    expect(r1.ok).toBe(true);
+    if (r1.ok) expect(r1.changed).toBe(true);
+    expect(svc.isMuted(id, 'u2')).toBe(true);
+    const r2 = svc.muteMember(id, 'u2');
+    expect(r2.ok).toBe(true);
+    if (r2.ok) expect(r2.changed).toBe(false);
+  });
+
+  it('muteMember 目标不在房间 → NOT_IN_ROOM', () => {
+    const svc = new RoomService();
+    const id = fullRoom(svc);
+    const r = svc.muteMember(id, 'ghost');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe('NOT_IN_ROOM');
+  });
+
+  it('muteMember 不存在的房间 → ROOM_NOT_FOUND', () => {
+    const svc = new RoomService();
+    const r = svc.muteMember('no-such', 'u1');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe('ROOM_NOT_FOUND');
+  });
+
+  it('unmuteMember 移除禁言；未禁言时 changed=false（幂等）', () => {
+    const svc = new RoomService();
+    const id = fullRoom(svc);
+    svc.muteMember(id, 'u3');
+    const r1 = svc.unmuteMember(id, 'u3');
+    expect(r1.ok).toBe(true);
+    if (r1.ok) expect(r1.changed).toBe(true);
+    expect(svc.isMuted(id, 'u3')).toBe(false);
+    const r2 = svc.unmuteMember(id, 'u3');
+    expect(r2.ok).toBe(true);
+    if (r2.ok) expect(r2.changed).toBe(false);
+  });
+
+  it('unmuteMember 不存在的房间 → ROOM_NOT_FOUND', () => {
+    const svc = new RoomService();
+    const r = svc.unmuteMember('no-such', 'u1');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe('ROOM_NOT_FOUND');
+  });
+
+  it('isMuted 对不存在房间返回 false', () => {
+    const svc = new RoomService();
+    expect(svc.isMuted('no-such', 'u1')).toBe(false);
+  });
 });

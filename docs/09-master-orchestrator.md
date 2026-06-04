@@ -145,7 +145,7 @@ gantt
 | 观战入口 UI（teams-tab Spectate 按钮 + 公开视图） | Frontend | ⏳ Todo |
 | Spectator socket e2e 测试 | QA | ⏳ Todo |
 | Referee admin-panel 审计页 | Frontend | ⏳ Todo |
-| Referee 实时事件（warn / mute / unmute 广播） | Referee/Server | ⏳ Todo |
+| Referee 实时事件（warn / mute / unmute 广播） | Referee/Server | ✅ Done (RoomService mute/unmute 状态 + Gateway `referee:warn` / `referee:mute` / `referee:unmute` 三命令；isMuted 网关侧拦截钩子已就位待 Phase 4 聊天接入) |
 
 ### 历史 Sprint 简记
 

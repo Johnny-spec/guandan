@@ -33,6 +33,8 @@ export interface Room {
   members: Map<string, Member>;
   /** 观战者（不参与出牌，仅接收公开广播 + room:updated）。 */
   spectators: Map<string, Spectator>;
+  /** 裁判禁言的用户 ID 集合（保留至房间销毁；Phase 4 聊天上线后用于网关侧拦截）。 */
+  mutedUsers: Set<string>;
   level: GameLevel;
   createdAt: string;
   session: GameSession | null;
@@ -68,6 +70,7 @@ export class RoomService {
       visibility,
       members: new Map(),
       spectators: new Map(),
+      mutedUsers: new Set(),
       level: '2',
       createdAt: new Date().toISOString(),
       session: null,
@@ -241,6 +244,45 @@ export class RoomService {
     room.session = null;
     if (hadSession) this.logger.log(`[referee] force-end session of ${roomId}`);
     return { ok: true, room: this.toDetail(room), hadSession };
+  }
+
+  /**
+   * 裁判禁言：目标必须在 room.members 中（spectator 禁言留待 Phase 4）。
+   * 幂等：重复禁言返回 changed=false。
+   */
+  muteMember(
+    roomId: string,
+    targetUserId: string,
+  ): { ok: true; room: RoomDetail; changed: boolean } | DomainError {
+    const room = this.rooms.get(roomId);
+    if (!room) return { ok: false, code: 'ROOM_NOT_FOUND', message: roomId };
+    if (!room.members.has(targetUserId)) {
+      return { ok: false, code: 'NOT_IN_ROOM', message: targetUserId };
+    }
+    const changed = !room.mutedUsers.has(targetUserId);
+    if (changed) {
+      room.mutedUsers.add(targetUserId);
+      this.logger.log(`[referee] mute ${targetUserId} in ${roomId}`);
+    }
+    return { ok: true, room: this.toDetail(room), changed };
+  }
+
+  /** 裁判解除禁言：幂等。未禁言者返回 changed=false。 */
+  unmuteMember(
+    roomId: string,
+    targetUserId: string,
+  ): { ok: true; room: RoomDetail; changed: boolean } | DomainError {
+    const room = this.rooms.get(roomId);
+    if (!room) return { ok: false, code: 'ROOM_NOT_FOUND', message: roomId };
+    const changed = room.mutedUsers.delete(targetUserId);
+    if (changed) this.logger.log(`[referee] unmute ${targetUserId} in ${roomId}`);
+    return { ok: true, room: this.toDetail(room), changed };
+  }
+
+  /** 网关聊天 / 互动事件前置校验。 */
+  isMuted(roomId: string, userId: string): boolean {
+    const room = this.rooms.get(roomId);
+    return room ? room.mutedUsers.has(userId) : false;
   }
 
   /** seat → member（含 bot），供 BotService / Gateway 反查。 */

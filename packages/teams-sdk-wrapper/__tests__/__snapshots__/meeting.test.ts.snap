@@ -1,0 +1,25 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildMeetingConfigurableTab > snapshot 锁定 meeting context 形态 1`] = `
+{
+  "canUpdateConfiguration": true,
+  "configurationUrl": "https://app.example.com/meeting/configure",
+  "context": [
+    "meetingSidePanel",
+    "meetingStage",
+    "meetingChatTab",
+  ],
+  "scopes": [
+    "groupchat",
+  ],
+}
+`;
+
+exports[`buildSpectatorConfig > 生成稳定形态 1`] = `
+{
+  "contentUrl": "https://app.example.com/spectate/room123",
+  "entityId": "guandan-spectate-room123",
+  "suggestedDisplayName": "观战",
+  "websiteUrl": "https://app.example.com/spectate/room123",
+}
+`;

@@ -20,3 +20,12 @@ export async function getSsoToken(): Promise<string | null> {
     return null;
   }
 }
+
+export {
+  buildSpectatorConfig,
+  buildMeetingConfigurableTab,
+  setSpectatorConfig,
+  getMeetingContext,
+  type SpectatorConfig,
+  type MeetingConfigurableTab,
+} from './meeting';

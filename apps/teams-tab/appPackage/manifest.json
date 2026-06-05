@@ -17,7 +17,14 @@
   },
   "icons": { "color": "color.png", "outline": "outline.png" },
   "accentColor": "#1F6FEB",
-  "configurableTabs": [],
+  "configurableTabs": [
+    {
+      "configurationUrl": "https://localhost:3000/meeting/configure",
+      "canUpdateConfiguration": true,
+      "scopes": ["groupchat"],
+      "context": ["meetingSidePanel", "meetingStage", "meetingChatTab"]
+    }
+  ],
   "staticTabs": [
     {
       "entityId": "guandan-home",

@@ -120,7 +120,7 @@ gantt
 | ~~MatchService 接入 game:start/finished~~ | Server | ✅ Done (Sprint 1) |
 | ~~REST 战绩 / 排行榜 / 用户 API~~ | Server | ✅ Done (Sprint 1) |
 | ~~teams-tab /profile + /leaderboard 页面~~ | Frontend | ✅ Done (Sprint 1) |
-| `PrismaMatchRepository`（替换 InMemory，沿用现有接口） | Database | ⏳ Todo |
+| `PrismaMatchRepository`（异步孪生 `AsyncMatchRepository` + DTO 转换 + `MATCH_MODULE` 按 `DATABASE_URL` 条件绑定，默认仍走 InMemory 不破现有测试） | Database | ✅ Done |
 | Prisma Client Module + 迁移脚本 + seed | Database | ⏳ Todo |
 | ~~Tier 段位计算（按 rating 投影到 `tiers` 表）~~ | Server | ✅ Done |
 | ~~战绩翻页 / 时间筛选~~ | Frontend | ✅ Done |

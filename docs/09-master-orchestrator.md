@@ -121,7 +121,7 @@ gantt
 | ~~REST 战绩 / 排行榜 / 用户 API~~ | Server | ✅ Done (Sprint 1) |
 | ~~teams-tab /profile + /leaderboard 页面~~ | Frontend | ✅ Done (Sprint 1) |
 | `PrismaMatchRepository`（异步孪生 `AsyncMatchRepository` + DTO 转换 + `MATCH_MODULE` 按 `DATABASE_URL` 条件绑定，默认仍走 InMemory 不破现有测试） | Database | ✅ Done |
-| Prisma Client Module + 迁移脚本 + seed | Database | ⏳ Todo |
+| ~~Prisma Client Module + 迁移脚本 + seed~~ | Database | ✅ Done (`PrismaService` 生命周期托管 + 全局 `PrismaModule.forRoot()` 按 `DATABASE_URL` 条件启停；baseline 迁移 `20260605000000_baseline` 由 `prisma migrate diff` 生成；`prisma/seed.ts` 幂等填充 4 HUMAN + 4 BOT + 演示 Match + RatingEvent；`prisma:seed` / `prisma:migrate:deploy` scripts) |
 | ~~Tier 段位计算（按 rating 投影到 `tiers` 表）~~ | Server | ✅ Done |
 | ~~战绩翻页 / 时间筛选~~ | Frontend | ✅ Done |
 | ~~RatingEvent 评分流水（事件溯源）~~ | Server | ✅ Done |

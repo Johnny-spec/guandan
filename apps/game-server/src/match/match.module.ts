@@ -1,5 +1,4 @@
 import { Module, type Provider } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
 import { InMemoryMatchRepository, MATCH_REPOSITORY } from './match.repository.js';
 import { RatingService } from './rating.service.js';
 import { TierService } from './tier.service.js';
@@ -8,22 +7,18 @@ import { MatchController } from './match.controller.js';
 import { InMemoryZSetLeaderboard, LEADERBOARD_CACHE } from './leaderboard.cache.js';
 import {
   ASYNC_MATCH_REPOSITORY,
-  PRISMA_CLIENT,
   PrismaMatchRepository,
 } from './prisma.match.repository.js';
 
 /**
  * 是否启用 Prisma 异步仓储。
- * - `DATABASE_URL` 配置且非空 → 同时绑定 ASYNC_MATCH_REPOSITORY = PrismaMatchRepository
+ * - `DATABASE_URL` 配置且非空 → 绑定 ASYNC_MATCH_REPOSITORY = PrismaMatchRepository
+ *   （PRISMA_CLIENT 由全局 PrismaModule 提供）
  * - 同步 InMemoryMatchRepository 仍是 MATCH_REPOSITORY 默认实现（迁移期保留）
  */
 const prismaProviders: Provider[] =
   process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== ''
     ? [
-        {
-          provide: PRISMA_CLIENT,
-          useFactory: () => new PrismaClient(),
-        },
         PrismaMatchRepository,
         { provide: ASYNC_MATCH_REPOSITORY, useExisting: PrismaMatchRepository },
       ]

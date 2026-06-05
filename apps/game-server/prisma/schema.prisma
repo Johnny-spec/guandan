@@ -72,12 +72,14 @@ model User {
   bansIssued      Ban[]          @relation("BanIssuedBy")
   reportsFiled    Report[]       @relation("Reporter")
   reportsReceived Report[]       @relation("ReportedUser")
-  ratingEvents    RatingEvent[]
-  spectatorLogs   SpectatorLog[]
-  refereeActions  RefereeLog[]   @relation("RefereeActor")
-  refereeTargets  RefereeLog[]   @relation("RefereeTarget")
-  auditLogs       AuditLog[]
-  notifications   Notification[]
+  ratingEvents      RatingEvent[]
+  spectatorLogs     SpectatorLog[]
+  refereeActions    RefereeLog[]      @relation("RefereeActor")
+  refereeTargets    RefereeLog[]      @relation("RefereeTarget")
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  tournamentEntries TournamentEntry[]
+  tournamentsHosted Tournament[]      @relation("TournamentHost")
 
   @@index([tierId, rating(sort: Desc)])
   @@index([tenantId, status])
@@ -506,4 +508,98 @@ model Notification {
 
   @@index([userId, readAt, createdAt(sort: Desc)])
   @@map("notifications")
+}
+
+// =============================================================================
+// 13. 赛事系统（Phase 4 · Sprint 1）
+//     单淘汰 / 双败 / 瑞士轮均按"轮次（rounds）"模型；本期只先落数据骨架
+//     与报名 Entry，配对算法 / Bracket 推进留到后续 Sprint。
+// =============================================================================
+
+enum TournamentFormat {
+  SINGLE_ELIM
+  DOUBLE_ELIM
+  SWISS
+  ROUND_ROBIN
+}
+
+enum TournamentStatus {
+  DRAFT       // 编辑中，未公开
+  OPEN        // 报名中
+  RUNNING     // 进行中
+  FINISHED
+  CANCELLED
+}
+
+enum EntryStatus {
+  PENDING
+  CONFIRMED
+  WITHDRAWN
+  KICKED
+}
+
+/// 赛事元数据。一个赛事由若干 round 组成，每个 round 由若干 Match 组成。
+model Tournament {
+  id            String           @id @default(cuid())
+  name          String
+  hostUserId    String
+  format        TournamentFormat @default(SINGLE_ELIM)
+  status        TournamentStatus @default(DRAFT)
+  maxTeams      Int              @default(16)
+  startLevel    String           @default("2") // 起始级牌
+  // 报名窗口
+  registrationOpensAt  DateTime?
+  registrationClosesAt DateTime?
+  // 实际比赛窗口
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  host    User              @relation("TournamentHost", fields: [hostUserId], references: [id])
+  entries TournamentEntry[]
+  rounds  TournamentRound[]
+
+  @@index([status, startedAt])
+  @@index([hostUserId, createdAt(sort: Desc)])
+  @@map("tournaments")
+}
+
+/// 赛事报名条目。一个报名 = 一个 2 人队伍（队长 + 队友）。
+/// 队友可空（允许半队报名等后续匹配队友）。
+model TournamentEntry {
+  id              String      @id @default(cuid())
+  tournamentId    String
+  captainUserId   String
+  partnerUserId   String?
+  teamName        String
+  seed            Int? // 种子号，配对算法用
+  status          EntryStatus @default(PENDING)
+  registeredAt    DateTime    @default(now())
+  withdrawnAt     DateTime?
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  captain    User       @relation(fields: [captainUserId], references: [id])
+
+  @@unique([tournamentId, captainUserId])
+  @@index([tournamentId, status])
+  @@index([captainUserId])
+  @@map("tournament_entries")
+}
+
+/// 赛事轮次。每轮由配对算法生成若干 Match。
+/// 本 model 只保存轮次元数据；具体配对在后续 Sprint 引入 TournamentMatch 关联表。
+model TournamentRound {
+  id           String   @id @default(cuid())
+  tournamentId String
+  roundIndex   Int // 1-based
+  name         String? // "Round of 16" / "Semifinal" 等
+  startedAt    DateTime?
+  finishedAt   DateTime?
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, roundIndex])
+  @@map("tournament_rounds")
 }

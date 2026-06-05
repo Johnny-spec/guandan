@@ -159,7 +159,19 @@ gantt
 | AI 难度调优（困难档：基础牌型估值 + 队友信号） | AI/Server | ✅ 完成（topOwnerSeat 透传 + hard 模式三项升级：起手 sizeBonusFactor 0.25 鼓励多牌组合、队友持顶 + 队友手少 + 对手安全则让位 pass、队友 ≤3 张不浪费炸） |
 | Adaptive Card 渲染快照测试 | QA | ✅ Done (`packages/adaptive-cards/src/builders.ts`：新增 `buildWelcomeCard` / `buildRoomCreatedCard` / `buildMatchFinishedCard` / `buildRefereeActionCard` 四个带 TS 类型的 builder + `cards.test.ts`：17 测试（含 9 个 snapshot，覆盖 6 种 referee kind 的容器 style 变体）；加 vitest devDep + `test` script) |
 | Spectator Teams Meeting Extension（占位 + manifest） | Frontend | ✅ Done（`packages/teams-sdk-wrapper/src/meeting.ts`：`buildSpectatorConfig` / `buildMeetingConfigurableTab` 纯函数 + `setSpectatorConfig` / `getMeetingContext` Teams SDK 包装；`apps/teams-tab/app/meeting/{configure,spectate}/page.tsx` 两个占位页（configure 提供 roomId 校验 + `pages.config.setConfig`；spectate landing 读取 meeting context）；`appPackage/manifest.json` 新增 meeting configurableTab（scope groupchat + context meetingSidePanel/Stage/ChatTab）；teams-sdk-wrapper 加 vitest + 8 测试（含 2 snapshot + manifest 契约校验）） |
-| RatingEvent Postgres model + 迁移 | Database | ⏳ Todo (依赖 Postgres) |
+| RatingEvent Postgres model + 迁移 | Database | ✅ Done (schema `RatingEvent` + baseline 迁移 + `PrismaMatchRepository.createRatingEvent/listRatingEventsByUser` + `FakePrismaClient` 集成测试覆盖 RatingEvent 流水) |
+
+#### Phase 4 · Sprint 1 看板（赛事系统 启航）
+
+| Lane | Owner | 状态 |
+| --- | --- | --- |
+| Tournament 数据模型 + 报名（schema + InMemory 仓储） | Database/Server | ✅ Done (`schema.prisma` 新增 `Tournament` / `TournamentEntry` / `TournamentRound` + 3 个枚举 + User 双向关系；`prisma/migrations/20260606000000_tournament/migration.sql` 手写 DDL；`apps/game-server/src/tournament/`：`TournamentRepository` 接口 + `InMemoryTournamentRepository`（队长唯一性 + maxTeams 容量校验 + 状态迁移自动 stamp startedAt/finishedAt）+ `TournamentModule` 接入 AppModule；+8 测试) |
+| Tournament REST API（CRUD + 报名 + 提交） | Server | ⏳ Todo |
+| Bracket 单淘汰配对算法（seed 排序 + bye 处理） | Server | ⏳ Todo |
+| Tournament 报名 UI（admin-panel 创建 + teams-tab 报名） | Frontend | ⏳ Todo |
+| Guild / 公会 数据模型 | Database | ⏳ Todo |
+| PrismaTournamentRepository（异步孪生 + FakePrismaClient 扩展） | Database/Server | ⏳ Todo |
+| AppSource 上架准备清单（manifest 审核 / 隐私声明） | DevOps | ⏳ Todo |
 
 > 实际看板用 GitHub Projects / Issues 维护；本表仅给 Agent 协作时一个统一参考点。
 

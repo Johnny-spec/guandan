@@ -42,6 +42,7 @@ export class BotService {
       {
         hand,
         top: snap.top,
+        topOwnerSeat: snap.topSeat ?? undefined,
         level: room.level,
         remainingCounts: snap.remainingCounts,
         seat: turnSeat,

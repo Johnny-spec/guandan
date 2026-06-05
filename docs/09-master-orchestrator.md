@@ -156,7 +156,7 @@ gantt
 | Lane | Owner | 状态 |
 | --- | --- | --- |
 | ~~Replay JSONL 文件持久化（无 DB 依赖）~~ | Replay/Server | ✅ Done (`replay.store.ts`：`ReplayStore` 接口 + `InMemoryReplayStore` + `JsonlReplayStore`（append-only `.jsonl` per matchId，路径白名单防注入）；ReplayService 通过 DI 注入 store（默认内存）；`ReplayModule` 工厂按 `REPLAY_DIR` env 切换；finishedAtMs 派生自首次 match_finish。+10 测试) |
-| AI 难度调优（困难档：基础牌型估值 + 队友信号） | AI/Server | ⏳ Todo |
+| AI 难度调优（困难档：基础牌型估值 + 队友信号） | AI/Server | ✅ 完成（topOwnerSeat 透传 + hard 模式三项升级：起手 sizeBonusFactor 0.25 鼓励多牌组合、队友持顶 + 队友手少 + 对手安全则让位 pass、队友 ≤3 张不浪费炸） |
 | Adaptive Card 渲染快照测试 | QA | ✅ Done (`packages/adaptive-cards/src/builders.ts`：新增 `buildWelcomeCard` / `buildRoomCreatedCard` / `buildMatchFinishedCard` / `buildRefereeActionCard` 四个带 TS 类型的 builder + `cards.test.ts`：17 测试（含 9 个 snapshot，覆盖 6 种 referee kind 的容器 style 变体）；加 vitest devDep + `test` script) |
 | Spectator Teams Meeting Extension（占位 + manifest） | Frontend | ⏳ Todo |
 | RatingEvent Postgres model + 迁移 | Database | ⏳ Todo (依赖 Postgres) |

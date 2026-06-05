@@ -252,6 +252,7 @@ export class GameSession {
     turnSeat: Seat;
     handIds: string[];
     top: { cards: Card[] } | null;
+    topSeat: Seat | null;
     remainingCounts: Record<Seat, number>;
   } | null {
     if (this.phase !== 'playing') return null;
@@ -267,6 +268,7 @@ export class GameSession {
       turnSeat,
       handIds: hand.map(cardId),
       top: this.top ? { cards: this.top.cards.map((c) => ({ ...c })) } : null,
+      topSeat: this.top ? this.top.seat : null,
       remainingCounts,
     };
   }

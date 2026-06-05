@@ -1,0 +1,387 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildMatchFinishedCard > 快照：含 rating delta 1`] = `
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "actions": [
+    {
+      "data": {
+        "matchId": "M-1",
+        "verb": "viewReplay",
+      },
+      "title": "查看回放",
+      "type": "Action.Submit",
+    },
+  ],
+  "body": [
+    {
+      "size": "Large",
+      "text": "🏆 对局结束",
+      "type": "TextBlock",
+      "weight": "Bolder",
+    },
+    {
+      "facts": [
+        {
+          "title": "获胜方",
+          "value": "南北 (N+S)",
+        },
+        {
+          "title": "终局打到",
+          "value": "A",
+        },
+        {
+          "title": "用时",
+          "value": "12分34秒",
+        },
+      ],
+      "type": "FactSet",
+    },
+    {
+      "items": [
+        {
+          "spacing": "Small",
+          "text": "段位变化",
+          "type": "TextBlock",
+          "weight": "Bolder",
+        },
+        {
+          "facts": [
+            {
+              "title": "张三",
+              "value": "+18",
+            },
+            {
+              "title": "李四",
+              "value": "-12",
+            },
+          ],
+          "type": "FactSet",
+        },
+      ],
+      "style": "emphasis",
+      "type": "Container",
+    },
+  ],
+  "type": "AdaptiveCard",
+  "version": "1.5",
+}
+`;
+
+exports[`buildRefereeActionCard > 快照：kind=force_end 1`] = `
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "body": [
+    {
+      "items": [
+        {
+          "size": "Medium",
+          "text": "🛑 强制结束对局",
+          "type": "TextBlock",
+          "weight": "Bolder",
+        },
+        {
+          "facts": [
+            {
+              "title": "裁判",
+              "value": "admin1",
+            },
+            {
+              "title": "房间号",
+              "value": "R-7",
+            },
+          ],
+          "type": "FactSet",
+        },
+      ],
+      "style": "attention",
+      "type": "Container",
+    },
+  ],
+  "type": "AdaptiveCard",
+  "version": "1.5",
+}
+`;
+
+exports[`buildRefereeActionCard > 快照：kind=kick 1`] = `
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "body": [
+    {
+      "items": [
+        {
+          "size": "Medium",
+          "text": "🚫 踢出房间",
+          "type": "TextBlock",
+          "weight": "Bolder",
+        },
+        {
+          "facts": [
+            {
+              "title": "裁判",
+              "value": "admin1",
+            },
+            {
+              "title": "房间号",
+              "value": "R-7",
+            },
+            {
+              "title": "对象",
+              "value": "user-9",
+            },
+          ],
+          "type": "FactSet",
+        },
+      ],
+      "style": "attention",
+      "type": "Container",
+    },
+  ],
+  "type": "AdaptiveCard",
+  "version": "1.5",
+}
+`;
+
+exports[`buildRefereeActionCard > 快照：kind=mute 1`] = `
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "body": [
+    {
+      "items": [
+        {
+          "size": "Medium",
+          "text": "🔇 禁言",
+          "type": "TextBlock",
+          "weight": "Bolder",
+        },
+        {
+          "facts": [
+            {
+              "title": "裁判",
+              "value": "admin1",
+            },
+            {
+              "title": "房间号",
+              "value": "R-7",
+            },
+            {
+              "title": "对象",
+              "value": "user-9",
+            },
+          ],
+          "type": "FactSet",
+        },
+      ],
+      "style": "attention",
+      "type": "Container",
+    },
+  ],
+  "type": "AdaptiveCard",
+  "version": "1.5",
+}
+`;
+
+exports[`buildRefereeActionCard > 快照：kind=note 1`] = `
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "body": [
+    {
+      "items": [
+        {
+          "size": "Medium",
+          "text": "📝 备注",
+          "type": "TextBlock",
+          "weight": "Bolder",
+        },
+        {
+          "facts": [
+            {
+              "title": "裁判",
+              "value": "admin1",
+            },
+            {
+              "title": "房间号",
+              "value": "R-7",
+            },
+            {
+              "title": "理由",
+              "value": "比赛日常巡查记录",
+            },
+          ],
+          "type": "FactSet",
+        },
+      ],
+      "style": "default",
+      "type": "Container",
+    },
+  ],
+  "type": "AdaptiveCard",
+  "version": "1.5",
+}
+`;
+
+exports[`buildRefereeActionCard > 快照：kind=unmute 1`] = `
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "body": [
+    {
+      "items": [
+        {
+          "size": "Medium",
+          "text": "🔊 解除禁言",
+          "type": "TextBlock",
+          "weight": "Bolder",
+        },
+        {
+          "facts": [
+            {
+              "title": "裁判",
+              "value": "admin1",
+            },
+            {
+              "title": "房间号",
+              "value": "R-7",
+            },
+            {
+              "title": "对象",
+              "value": "user-9",
+            },
+          ],
+          "type": "FactSet",
+        },
+      ],
+      "style": "good",
+      "type": "Container",
+    },
+  ],
+  "type": "AdaptiveCard",
+  "version": "1.5",
+}
+`;
+
+exports[`buildRefereeActionCard > 快照：kind=warn 1`] = `
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "body": [
+    {
+      "items": [
+        {
+          "size": "Medium",
+          "text": "⚠️ 警告",
+          "type": "TextBlock",
+          "weight": "Bolder",
+        },
+        {
+          "facts": [
+            {
+              "title": "裁判",
+              "value": "admin1",
+            },
+            {
+              "title": "房间号",
+              "value": "R-7",
+            },
+            {
+              "title": "对象",
+              "value": "user-9",
+            },
+          ],
+          "type": "FactSet",
+        },
+      ],
+      "style": "warning",
+      "type": "Container",
+    },
+  ],
+  "type": "AdaptiveCard",
+  "version": "1.5",
+}
+`;
+
+exports[`buildRoomCreatedCard > 快照：含观战人数 + join/spectate 双操作 1`] = `
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "actions": [
+    {
+      "data": {
+        "roomId": "R-12345",
+        "verb": "joinRoom",
+      },
+      "title": "加入",
+      "type": "Action.Submit",
+    },
+    {
+      "data": {
+        "roomId": "R-12345",
+        "verb": "spectateRoom",
+      },
+      "title": "观战",
+      "type": "Action.Submit",
+    },
+  ],
+  "body": [
+    {
+      "size": "Medium",
+      "text": "🎴 新房间已开",
+      "type": "TextBlock",
+      "weight": "Bolder",
+    },
+    {
+      "facts": [
+        {
+          "title": "房间号",
+          "value": "R-12345",
+        },
+        {
+          "title": "房主",
+          "value": "张三",
+        },
+        {
+          "title": "观战人数",
+          "value": "2",
+        },
+      ],
+      "type": "FactSet",
+    },
+  ],
+  "type": "AdaptiveCard",
+  "version": "1.5",
+}
+`;
+
+exports[`buildWelcomeCard > 快照 1`] = `
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "actions": [
+    {
+      "data": {
+        "verb": "createRoom",
+      },
+      "title": "创建房间",
+      "type": "Action.Submit",
+    },
+    {
+      "data": {
+        "verb": "quickMatch",
+      },
+      "title": "快速匹配",
+      "type": "Action.Submit",
+    },
+  ],
+  "body": [
+    {
+      "size": "Large",
+      "text": "掼蛋平台",
+      "type": "TextBlock",
+      "weight": "Bolder",
+    },
+    {
+      "text": "点击下方按钮快速创建房间或加入匹配。",
+      "type": "TextBlock",
+      "wrap": true,
+    },
+  ],
+  "type": "AdaptiveCard",
+  "version": "1.5",
+}
+`;

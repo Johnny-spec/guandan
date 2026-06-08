@@ -32,6 +32,12 @@ export interface BracketMatch {
   slotB: BracketSlot;
   /** 若一侧是 bye，胜者已确定，可直接晋级到下一轮。 */
   preDeterminedWinner: 'A' | 'B' | null;
+  /**
+   * 当前 match 的胜者。
+   * - 生成 bracket 时：若 `preDeterminedWinner` 非空（bye 自动晋级），`winner` 同步初始化；否则为 `null`。
+   * - `recordBracketResult` 写入后该字段被 stamp，且下一轮对应的 `winner_of` 槽位会被替换为 entry slot。
+   */
+  winner: 'A' | 'B' | null;
 }
 
 export interface BracketRound {
@@ -158,6 +164,7 @@ export function generateSingleEliminationBracket(
       slotA,
       slotB,
       preDeterminedWinner,
+      winner: preDeterminedWinner,
     });
   }
   rounds.push({
@@ -181,6 +188,7 @@ export function generateSingleEliminationBracket(
         slotA: { kind: 'winner_of', matchId: left.matchId },
         slotB: { kind: 'winner_of', matchId: right.matchId },
         preDeterminedWinner: null,
+        winner: null,
       });
     }
     rounds.push({
@@ -197,4 +205,139 @@ export function generateSingleEliminationBracket(
     totalRounds,
     rounds,
   };
+}
+
+// ---- Phase 4 Sprint 2 · Bracket 推进 API ----
+
+/** Bracket 推进语义化错误（区别于 generator 校验错误）。 */
+export class BracketProgressError extends Error {
+  constructor(
+    readonly code:
+      | 'MATCH_NOT_FOUND'
+      | 'MATCH_ALREADY_DECIDED'
+      | 'SLOT_NOT_DETERMINED'
+      | 'INVALID_WINNER',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'BracketProgressError';
+  }
+}
+
+function cloneBracket(b: Bracket): Bracket {
+  return {
+    entryCount: b.entryCount,
+    slotCount: b.slotCount,
+    totalRounds: b.totalRounds,
+    rounds: b.rounds.map((r) => ({
+      roundIndex: r.roundIndex,
+      name: r.name,
+      matches: r.matches.map((m) => ({
+        matchId: m.matchId,
+        roundIndex: m.roundIndex,
+        matchIndex: m.matchIndex,
+        slotA: { ...m.slotA } as BracketSlot,
+        slotB: { ...m.slotB } as BracketSlot,
+        preDeterminedWinner: m.preDeterminedWinner,
+        winner: m.winner,
+      })),
+    })),
+  };
+}
+
+export function findBracketMatch(b: Bracket, matchId: string): BracketMatch | null {
+  for (const r of b.rounds) {
+    for (const m of r.matches) if (m.matchId === matchId) return m;
+  }
+  return null;
+}
+
+/**
+ * 给定一个 match 已确定的 winner（`'A'|'B'`），返回该侧的 BracketSlot（必为 entry 槽）。
+ * 若该侧槽位尚未解析（仍 `winner_of`），返回 null。
+ */
+function winnerSlotOf(match: BracketMatch): BracketSlot | null {
+  const side = match.winner;
+  if (side === null) return null;
+  const slot = side === 'A' ? match.slotA : match.slotB;
+  return slot.kind === 'entry' ? slot : null;
+}
+
+/**
+ * 把已经决出胜者的 match 向下游传播：在下一轮中找到 `winner_of: matchId` 槽位，替换为该 match 的胜方 entry slot。
+ *
+ * - 幂等：重复调用结果一致。
+ * - 链式传播：bye 自带 winner，调用本函数会一次性把所有可推进的 bye 链向下展开。
+ */
+export function propagateBracket(b: Bracket): Bracket {
+  const next = cloneBracket(b);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const round of next.rounds) {
+      for (const m of round.matches) {
+        const winSlot = winnerSlotOf(m);
+        if (!winSlot) continue;
+        // 在所有后续 match 中找指向本 match 的 winner_of 槽位并替换。
+        for (const r2 of next.rounds) {
+          for (const m2 of r2.matches) {
+            for (const key of ['slotA', 'slotB'] as const) {
+              const s = m2[key];
+              if (s.kind === 'winner_of' && s.matchId === m.matchId) {
+                m2[key] = { ...winSlot };
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return next;
+}
+
+/**
+ * 记录一场 bracket match 的结果。
+ *
+ * - 校验：matchId 存在；尚未 decided；winner ∈ {'A','B'}；该侧槽位已解析为 entry。
+ * - 写入 winner 后立即 `propagateBracket`，把胜方塞进下一轮的 `winner_of` 占位槽。
+ * - 纯函数：不修改入参，返回新 Bracket。
+ */
+export function recordBracketResult(
+  bracket: Bracket,
+  matchId: string,
+  winner: 'A' | 'B',
+): Bracket {
+  if (winner !== 'A' && winner !== 'B') {
+    throw new BracketProgressError('INVALID_WINNER', `winner must be 'A' or 'B', got ${winner}`);
+  }
+  const target = findBracketMatch(bracket, matchId);
+  if (!target) {
+    throw new BracketProgressError('MATCH_NOT_FOUND', `Bracket match ${matchId} not found`);
+  }
+  if (target.winner !== null) {
+    throw new BracketProgressError(
+      'MATCH_ALREADY_DECIDED',
+      `Bracket match ${matchId} already has winner '${target.winner}'`,
+    );
+  }
+  const slot = winner === 'A' ? target.slotA : target.slotB;
+  if (slot.kind !== 'entry') {
+    throw new BracketProgressError(
+      'SLOT_NOT_DETERMINED',
+      `Bracket match ${matchId} slot ${winner} not yet resolved (kind=${slot.kind})`,
+    );
+  }
+  const next = cloneBracket(bracket);
+  const m = findBracketMatch(next, matchId)!;
+  m.winner = winner;
+  return propagateBracket(next);
+}
+
+/** 若最终一轮唯一 match 的胜者已定，返回 champion entry slot；否则 null。 */
+export function getBracketChampion(bracket: Bracket): BracketSlot | null {
+  const finalRound = bracket.rounds[bracket.rounds.length - 1];
+  if (!finalRound || finalRound.matches.length !== 1) return null;
+  const final = finalRound.matches[0]!;
+  return winnerSlotOf(final);
 }

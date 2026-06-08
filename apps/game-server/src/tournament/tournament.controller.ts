@@ -94,6 +94,25 @@ export class TournamentController {
   bracket(@Param('id') id: string) {
     return wrap(() => this.svc.previewBracket(id));
   }
+
+  @Get(':id/live-bracket')
+  liveBracket(@Param('id') id: string) {
+    return wrap(() => this.svc.getLiveBracket(id));
+  }
+
+  @Get(':id/live-bracket/matches/:matchId')
+  getBracketMatch(@Param('id') id: string, @Param('matchId') matchId: string) {
+    return wrap(() => this.svc.getBracketMatch(id, matchId));
+  }
+
+  @Post(':id/live-bracket/matches/:matchId/result')
+  recordBracketMatch(
+    @Param('id') id: string,
+    @Param('matchId') matchId: string,
+    @Body() body: { winner: 'A' | 'B' },
+  ) {
+    return wrap(() => this.svc.recordBracketMatchResult(id, matchId, body?.winner));
+  }
 }
 
 @Controller('api/v1/tournament-entries')

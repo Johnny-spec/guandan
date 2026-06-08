@@ -8,7 +8,7 @@ import {
   type TournamentRepository,
   type TournamentStatus,
 } from './tournament.repository.js';
-import { generateSingleEliminationBracket, type Bracket } from './bracket.js';
+import { generateSingleEliminationBracket, propagateBracket, recordBracketResult, getBracketChampion, findBracketMatch, BracketProgressError, type Bracket, type BracketSlot } from './bracket.js';
 
 /** 业务异常（控制器映射为 4xx）。 */
 export class TournamentError extends Error {
@@ -42,6 +42,14 @@ export interface RegisterEntryInput {
 
 @Injectable()
 export class TournamentService {
+  /**
+   * Phase 4 Sprint 2 · 进行中赛事的 bracket 状态（in-memory，按 tournamentId 索引）。
+   *
+   * 选择放在 service 内而非 repository，是因为 bracket 是"运行时派生状态"，
+   * 当前阶段未引入 TournamentMatch 表；后续 Sprint 落库时可平滑迁移到 repo。
+   */
+  private readonly liveBrackets = new Map<string, Bracket>();
+
   constructor(
     @Inject(TOURNAMENT_REPOSITORY) private readonly repo: TournamentRepository,
   ) {}
@@ -125,8 +133,11 @@ export class TournamentService {
     for (const r of bracket.rounds) {
       this.repo.addRound({ tournamentId: id, roundIndex: r.roundIndex, name: r.name });
     }
+    // Sprint 2：把首轮 bye 链向后传播一次，然后把 bracket 缓存为运行时状态。
+    const propagated = propagateBracket(bracket);
+    this.liveBrackets.set(id, propagated);
     const updated = this.repo.updateTournamentStatus(id, 'RUNNING')!;
-    return { tournament: updated, bracket };
+    return { tournament: updated, bracket: propagated };
   }
 
   finishTournament(id: string): TournamentRecord {
@@ -209,5 +220,79 @@ export class TournamentService {
       );
     }
     return generateSingleEliminationBracket(active);
+  }
+
+  // ---------- Phase 4 Sprint 2 · Bracket 推进 ----------
+
+  /** 当前进行中的 bracket（startTournament 之后可用）。 */
+  getLiveBracket(tournamentId: string): Bracket {
+    this.getTournament(tournamentId);
+    const b = this.liveBrackets.get(tournamentId);
+    if (!b) {
+      throw new TournamentError(
+        'BRACKET_NOT_STARTED',
+        `Bracket for ${tournamentId} not started`,
+        404,
+      );
+    }
+    return b;
+  }
+
+  /**
+   * 记录一场 bracket match 的结果。胜方自动晋级到下一轮 `winner_of` 槽位；
+   * 若是最终一轮，会自动把赛事状态推进到 `FINISHED` 并返回 champion。
+   */
+  recordBracketMatchResult(
+    tournamentId: string,
+    matchId: string,
+    winner: 'A' | 'B',
+  ): { bracket: Bracket; champion: BracketSlot | null; tournament: TournamentRecord } {
+    const t = this.getTournament(tournamentId);
+    if (t.status !== 'RUNNING') {
+      throw new TournamentError(
+        'INVALID_STATE',
+        `Cannot record bracket result when status=${t.status}`,
+      );
+    }
+    const current = this.liveBrackets.get(tournamentId);
+    if (!current) {
+      throw new TournamentError(
+        'BRACKET_NOT_STARTED',
+        `Bracket for ${tournamentId} not started`,
+        404,
+      );
+    }
+    let next: Bracket;
+    try {
+      next = recordBracketResult(current, matchId, winner);
+    } catch (err) {
+      if (err instanceof BracketProgressError) {
+        const statusByCode: Record<string, number> = {
+          MATCH_NOT_FOUND: 404,
+          MATCH_ALREADY_DECIDED: 409,
+          SLOT_NOT_DETERMINED: 409,
+          INVALID_WINNER: 400,
+        };
+        throw new TournamentError(err.code, err.message, statusByCode[err.code] ?? 400);
+      }
+      throw err;
+    }
+    this.liveBrackets.set(tournamentId, next);
+    const champion = getBracketChampion(next);
+    let tournament = t;
+    if (champion) {
+      tournament = this.repo.updateTournamentStatus(tournamentId, 'FINISHED') ?? t;
+    }
+    return { bracket: next, champion, tournament };
+  }
+
+  /** 单独取一场 bracket match 状态（测试 / 前端展示用）。 */
+  getBracketMatch(tournamentId: string, matchId: string) {
+    const b = this.getLiveBracket(tournamentId);
+    const m = findBracketMatch(b, matchId);
+    if (!m) {
+      throw new TournamentError('MATCH_NOT_FOUND', `bracket match ${matchId} not found`, 404);
+    }
+    return m;
   }
 }

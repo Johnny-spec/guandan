@@ -178,8 +178,8 @@ gantt
 | Lane | Owner | 状态 |
 | --- | --- | --- |
 | PrismaGuildRepository（异步孪生 + FakePrismaClient 扩展） | Database/Server | ✅ Done（`apps/game-server/src/guild/prisma.guild.repository.ts`：`AsyncGuildRepository` 接口 + Prisma 实现，P2002 → DUPLICATE_NAME / DUPLICATE_TAG / DUPLICATE_MEMBER 语义化错误映射，`updateMembership` 状态 → LEFT/KICKED 自动 stamp `leftAt`，`updateGuild` 支持 `disbandedAt` patch；FakePrismaClient 扩展 `guild` + `guildMembership` 表 mock（含 name/tag 唯一约束 + nullable tag 允许多 NULL 行为）；+14 集成测试 / 326 green） |
+| Bracket 推进 API（record match result → advance bracket） | Server | ✅ Done（`apps/game-server/src/tournament/bracket.ts`：`BracketMatch.winner` 字段 + 纯函数 `propagateBracket` / `recordBracketResult` / `findBracketMatch` / `getBracketChampion` + `BracketProgressError`（4 个 code）；`TournamentService.getLiveBracket` / `recordBracketMatchResult` / `getBracketMatch`，运行中 bracket 状态以 `liveBrackets` Map 缓存；最终 match 决出后自动 `FINISHED` 赛事并返回 champion；`startTournament` 自动 propagate round-1 byes 到下游 slot。新 REST：`GET /api/v1/tournaments/:id/live-bracket` / `GET .../matches/:matchId` / `POST .../result`，BracketProgressError → 400/404/409 状态码映射；+20 测试（11 bracket 纯函数 + 9 service 集成）/ 346 green） |
 | Tournament 自动开局调度 | Server | ⏳ Todo |
-| Bracket 推进 API（record match result → advance bracket） | Server | ⏳ Todo |
 | GDPR DSR `/admin/v1/users/:aad/erase` | Server/Security | ⏳ Todo |
 | Guild 频道 / 活动（基础） | Server/Frontend | ⏳ Todo |
 

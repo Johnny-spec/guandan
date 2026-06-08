@@ -96,3 +96,4 @@
 - admin-panel 首页与 teams-tab Lobby 加入导航入口。
 - 全仓 `pnpm typecheck` 9/9 green；两个 Next.js 应用 `build` 通过；测试维持 312 green。
 - **Phase 4 Sprint 1 收官** ✅ — 看板全部 lane 已完成（赛事数据模型 → REST → Bracket → PrismaTournamentRepository → 报名 UI → Guild 数据模型 → AppSource 上架清单）。
+- 2026-06-08 18:40 自动迭代：Phase 4 Sprint 2 启动 · PrismaGuildRepository 异步孪生（pps/game-server/src/guild/prisma.guild.repository.ts + FakePrismaClient guild/guildMembership 表 mock + 14 集成测试，覆盖 DTO 序列化 / name+tag 唯一性 / LEFT-KICKED 自动 stamp leftAt / listMembershipsByUser）。typecheck 9/9，全量 326 tests green（246 server + 55 engine + 8 sdk + 17 cards）。

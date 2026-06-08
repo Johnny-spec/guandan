@@ -173,6 +173,17 @@ gantt
 | PrismaTournamentRepository（异步孪生 + FakePrismaClient 扩展） | Database/Server | ✅ Done（`prisma.tournament.repository.ts`：AsyncTournamentRepository 接口 + Prisma 实现，P2002→duplicate captain/round 错误映射，RUNNING/FINISHED/CANCELLED 自动 stamp 时间戳；FakePrismaClient 新增 tournament/tournamentEntry/tournamentRound 三张表 + 唯一性模拟；+11 集成测试 / 293 green） |
 | AppSource 上架准备清单（manifest 审核 / 隐私声明） | DevOps | ✅ Done（`docs/11-appsource-submission.md`：8 节清单 — 资产清单 / Manifest 审核 / 合规与安全审查 / 隐私声明骨架 / 服务条款骨架 / Smoke Test 流程 / 提交 Run Book / Sign-off 模板，含具体规格（icon 192/32px、screenshot 1366×768、validDomains 清理、AAD SSO `webApplicationInfo`、Publisher Attestation 选项）与三方签字门控） |
 
+#### Phase 4 · Sprint 2 看板（赛事/公会 异步化 & 推进）
+
+| Lane | Owner | 状态 |
+| --- | --- | --- |
+| PrismaGuildRepository（异步孪生 + FakePrismaClient 扩展） | Database/Server | ✅ Done（`apps/game-server/src/guild/prisma.guild.repository.ts`：`AsyncGuildRepository` 接口 + Prisma 实现，P2002 → DUPLICATE_NAME / DUPLICATE_TAG / DUPLICATE_MEMBER 语义化错误映射，`updateMembership` 状态 → LEFT/KICKED 自动 stamp `leftAt`，`updateGuild` 支持 `disbandedAt` patch；FakePrismaClient 扩展 `guild` + `guildMembership` 表 mock（含 name/tag 唯一约束 + nullable tag 允许多 NULL 行为）；+14 集成测试 / 326 green） |
+| Tournament 自动开局调度 | Server | ⏳ Todo |
+| Bracket 推进 API（record match result → advance bracket） | Server | ⏳ Todo |
+| GDPR DSR `/admin/v1/users/:aad/erase` | Server/Security | ⏳ Todo |
+| Guild 频道 / 活动（基础） | Server/Frontend | ⏳ Todo |
+
+
 > 实际看板用 GitHub Projects / Issues 维护；本表仅给 Agent 协作时一个统一参考点。
 
 ## §6 接口契约（Agent 间硬约束）

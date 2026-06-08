@@ -99,6 +99,30 @@ type TournamentRoundRow = {
   finishedAt: Date | null;
 };
 
+type GuildRow = {
+  id: string;
+  name: string;
+  tag: string | null;
+  ownerUserId: string;
+  description: string | null;
+  maxMembers: number;
+  joinPolicy: string;
+  tenantId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  disbandedAt: Date | null;
+};
+
+type GuildMembershipRow = {
+  id: string;
+  guildId: string;
+  userId: string;
+  role: 'OWNER' | 'ADMIN' | 'MEMBER';
+  status: 'PENDING' | 'ACTIVE' | 'LEFT' | 'KICKED';
+  joinedAt: Date;
+  leftAt: Date | null;
+};
+
 type IncrementOp = { increment: number };
 function isIncrement(v: unknown): v is IncrementOp {
   return typeof v === 'object' && v !== null && 'increment' in v;
@@ -117,6 +141,8 @@ export class FakePrismaClient {
   private tournaments = new Map<string, TournamentRow>();
   private tournamentEntries: TournamentEntryRow[] = [];
   private tournamentRounds: TournamentRoundRow[] = [];
+  private guilds = new Map<string, GuildRow>();
+  private guildMemberships: GuildMembershipRow[] = [];
   private idCounter = 1;
   private bigIdCounter = 1n;
 
@@ -522,6 +548,168 @@ export class FakePrismaClient {
           const vb = (b as unknown as Record<string, unknown>)[k] as number;
           if (va < vb) return dir === 'asc' ? -1 : 1;
           if (va > vb) return dir === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+      return rows;
+    },
+  };
+
+  // --- guild ---
+  guild = {
+    create: async (args: { data: Partial<GuildRow> & { name: string; ownerUserId: string } }): Promise<GuildRow> => {
+      const d = args.data;
+      for (const g of this.guilds.values()) {
+        if (g.name === d.name) {
+          const err = new Error('Unique constraint failed') as Error & { code?: string; meta?: { target: string[] } };
+          err.code = 'P2002';
+          err.meta = { target: ['name'] };
+          throw err;
+        }
+        if (d.tag != null && g.tag === d.tag) {
+          const err = new Error('Unique constraint failed') as Error & { code?: string; meta?: { target: string[] } };
+          err.code = 'P2002';
+          err.meta = { target: ['tag'] };
+          throw err;
+        }
+      }
+      const now = new Date();
+      const row: GuildRow = {
+        id: d.id ?? this.nextId(),
+        name: d.name,
+        tag: d.tag ?? null,
+        ownerUserId: d.ownerUserId,
+        description: d.description ?? null,
+        maxMembers: d.maxMembers ?? 50,
+        joinPolicy: d.joinPolicy ?? 'APPROVAL',
+        tenantId: d.tenantId ?? null,
+        createdAt: d.createdAt ?? now,
+        updatedAt: d.updatedAt ?? now,
+        disbandedAt: d.disbandedAt ?? null,
+      };
+      this.guilds.set(row.id, row);
+      return row;
+    },
+
+    findUnique: async (args: { where: { id?: string; name?: string; tag?: string } }): Promise<GuildRow | null> => {
+      if (args.where.id) return this.guilds.get(args.where.id) ?? null;
+      if (args.where.name) {
+        for (const g of this.guilds.values()) if (g.name === args.where.name) return g;
+        return null;
+      }
+      if (args.where.tag) {
+        for (const g of this.guilds.values()) if (g.tag === args.where.tag) return g;
+        return null;
+      }
+      return null;
+    },
+
+    findMany: async (args: {
+      where?: { tenantId?: string; disbandedAt?: null };
+      orderBy?: Record<string, 'asc' | 'desc'>;
+    }): Promise<GuildRow[]> => {
+      let rows = [...this.guilds.values()];
+      if (args.where && 'tenantId' in args.where) {
+        rows = rows.filter((g) => g.tenantId === args.where!.tenantId);
+      }
+      if (args.where && 'disbandedAt' in args.where && args.where.disbandedAt === null) {
+        rows = rows.filter((g) => g.disbandedAt === null);
+      }
+      if (args.orderBy) {
+        const [k, dir] = Object.entries(args.orderBy)[0]!;
+        rows.sort((a, b) => {
+          const va = (a as unknown as Record<string, unknown>)[k] as Date | number | string;
+          const vb = (b as unknown as Record<string, unknown>)[k] as Date | number | string;
+          const na = va instanceof Date ? +va : va;
+          const nb = vb instanceof Date ? +vb : vb;
+          if (na < nb) return dir === 'asc' ? -1 : 1;
+          if (na > nb) return dir === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+      return rows;
+    },
+
+    update: async (args: { where: { id: string }; data: Partial<GuildRow> }): Promise<GuildRow> => {
+      const row = this.guilds.get(args.where.id);
+      if (!row) throw new Error(`guild not found: ${args.where.id}`);
+      if (args.data.tag != null && args.data.tag !== row.tag) {
+        for (const g of this.guilds.values()) {
+          if (g.id !== row.id && g.tag === args.data.tag) {
+            const err = new Error('Unique constraint failed') as Error & { code?: string; meta?: { target: string[] } };
+            err.code = 'P2002';
+            err.meta = { target: ['tag'] };
+            throw err;
+          }
+        }
+      }
+      const next: GuildRow = { ...row, ...args.data, updatedAt: new Date() };
+      this.guilds.set(row.id, next);
+      return next;
+    },
+  };
+
+  guildMembership = {
+    create: async (args: {
+      data: Partial<GuildMembershipRow> & { guildId: string; userId: string };
+    }): Promise<GuildMembershipRow> => {
+      const dup = this.guildMemberships.find(
+        (m) => m.guildId === args.data.guildId && m.userId === args.data.userId,
+      );
+      if (dup) {
+        const err = new Error('Unique constraint failed') as Error & { code?: string };
+        err.code = 'P2002';
+        throw err;
+      }
+      const row: GuildMembershipRow = {
+        id: args.data.id ?? this.nextId(),
+        guildId: args.data.guildId,
+        userId: args.data.userId,
+        role: args.data.role ?? 'MEMBER',
+        status: args.data.status ?? 'PENDING',
+        joinedAt: args.data.joinedAt ?? new Date(),
+        leftAt: args.data.leftAt ?? null,
+      };
+      this.guildMemberships.push(row);
+      return row;
+    },
+
+    update: async (args: {
+      where: { id: string };
+      data: Partial<GuildMembershipRow>;
+    }): Promise<GuildMembershipRow> => {
+      const idx = this.guildMemberships.findIndex((m) => m.id === args.where.id);
+      if (idx < 0) throw new Error(`guildMembership not found: ${args.where.id}`);
+      const merged: GuildMembershipRow = { ...this.guildMemberships[idx]!, ...args.data };
+      this.guildMemberships[idx] = merged;
+      return merged;
+    },
+
+    findMany: async (args: {
+      where?: {
+        guildId?: string;
+        userId?: string;
+        status?: GuildMembershipRow['status'] | { in: GuildMembershipRow['status'][] };
+      };
+      orderBy?: Record<string, 'asc' | 'desc'>;
+    }): Promise<GuildMembershipRow[]> => {
+      let rows = [...this.guildMemberships];
+      if (args.where?.guildId) rows = rows.filter((m) => m.guildId === args.where!.guildId);
+      if (args.where?.userId) rows = rows.filter((m) => m.userId === args.where!.userId);
+      const s = args.where?.status;
+      if (s) {
+        if (typeof s === 'object' && 'in' in s) rows = rows.filter((m) => s.in.includes(m.status));
+        else rows = rows.filter((m) => m.status === s);
+      }
+      if (args.orderBy) {
+        const [k, dir] = Object.entries(args.orderBy)[0]!;
+        rows.sort((a, b) => {
+          const va = (a as unknown as Record<string, unknown>)[k] as Date | number | string;
+          const vb = (b as unknown as Record<string, unknown>)[k] as Date | number | string;
+          const na = va instanceof Date ? +va : va;
+          const nb = vb instanceof Date ? +vb : vb;
+          if (na < nb) return dir === 'asc' ? -1 : 1;
+          if (na > nb) return dir === 'asc' ? 1 : -1;
           return 0;
         });
       }

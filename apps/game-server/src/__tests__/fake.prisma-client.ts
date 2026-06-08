@@ -61,6 +61,44 @@ type RatingEventRow = {
   at: Date;
 };
 
+type TournamentRow = {
+  id: string;
+  name: string;
+  hostUserId: string;
+  format: 'SINGLE_ELIM' | 'DOUBLE_ELIM' | 'SWISS' | 'ROUND_ROBIN';
+  status: 'DRAFT' | 'OPEN' | 'RUNNING' | 'FINISHED' | 'CANCELLED';
+  maxTeams: number;
+  startLevel: string;
+  registrationOpensAt: Date | null;
+  registrationClosesAt: Date | null;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  description: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type TournamentEntryRow = {
+  id: string;
+  tournamentId: string;
+  captainUserId: string;
+  partnerUserId: string | null;
+  teamName: string;
+  seed: number | null;
+  status: 'PENDING' | 'CONFIRMED' | 'WITHDRAWN' | 'KICKED';
+  registeredAt: Date;
+  withdrawnAt: Date | null;
+};
+
+type TournamentRoundRow = {
+  id: string;
+  tournamentId: string;
+  roundIndex: number;
+  name: string | null;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+};
+
 type IncrementOp = { increment: number };
 function isIncrement(v: unknown): v is IncrementOp {
   return typeof v === 'object' && v !== null && 'increment' in v;
@@ -76,6 +114,9 @@ export class FakePrismaClient {
   private matches = new Map<string, MatchRow>();
   private players: MatchPlayerRow[] = [];
   private ratingEvents: RatingEventRow[] = [];
+  private tournaments = new Map<string, TournamentRow>();
+  private tournamentEntries: TournamentEntryRow[] = [];
+  private tournamentRounds: TournamentRoundRow[] = [];
   private idCounter = 1;
   private bigIdCounter = 1n;
 
@@ -290,6 +331,200 @@ export class FakePrismaClient {
       if (args.orderBy?.at === 'desc') rows = [...rows].sort((a, b) => +b.at - +a.at);
       if (args.orderBy?.at === 'asc') rows = [...rows].sort((a, b) => +a.at - +b.at);
       if (args.take !== undefined) rows = rows.slice(0, args.take);
+      return rows;
+    },
+  };
+
+  // --- tournament / tournamentEntry / tournamentRound ---
+  tournament = {
+    create: async (args: {
+      data: Partial<TournamentRow> & {
+        id?: string;
+        name: string;
+        hostUserId: string;
+        format: TournamentRow['format'];
+        status: TournamentRow['status'];
+        maxTeams: number;
+        startLevel: string;
+      };
+    }): Promise<TournamentRow> => {
+      const now = new Date();
+      const id = args.data.id ?? this.nextId();
+      const row: TournamentRow = {
+        id,
+        name: args.data.name,
+        hostUserId: args.data.hostUserId,
+        format: args.data.format,
+        status: args.data.status,
+        maxTeams: args.data.maxTeams,
+        startLevel: args.data.startLevel,
+        registrationOpensAt: args.data.registrationOpensAt ?? null,
+        registrationClosesAt: args.data.registrationClosesAt ?? null,
+        startedAt: args.data.startedAt ?? null,
+        finishedAt: args.data.finishedAt ?? null,
+        description: args.data.description ?? null,
+        createdAt: args.data.createdAt ?? now,
+        updatedAt: args.data.updatedAt ?? now,
+      };
+      this.tournaments.set(id, row);
+      return row;
+    },
+
+    findUnique: async (args: { where: { id: string } }): Promise<TournamentRow | null> => {
+      return this.tournaments.get(args.where.id) ?? null;
+    },
+
+    findMany: async (args: {
+      where?: { status?: TournamentRow['status']; hostUserId?: string };
+      orderBy?: Record<string, 'asc' | 'desc'>;
+    }): Promise<TournamentRow[]> => {
+      let rows = [...this.tournaments.values()];
+      if (args.where?.status) rows = rows.filter((r) => r.status === args.where!.status);
+      if (args.where?.hostUserId)
+        rows = rows.filter((r) => r.hostUserId === args.where!.hostUserId);
+      if (args.orderBy) {
+        const [k, dir] = Object.entries(args.orderBy)[0]!;
+        rows.sort((a, b) => {
+          const va = (a as unknown as Record<string, unknown>)[k] as Date | number | string;
+          const vb = (b as unknown as Record<string, unknown>)[k] as Date | number | string;
+          const na = va instanceof Date ? +va : va;
+          const nb = vb instanceof Date ? +vb : vb;
+          if (na < nb) return dir === 'asc' ? -1 : 1;
+          if (na > nb) return dir === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+      return rows;
+    },
+
+    update: async (args: {
+      where: { id: string };
+      data: Partial<TournamentRow>;
+    }): Promise<TournamentRow> => {
+      const row = this.tournaments.get(args.where.id);
+      if (!row) throw new Error(`tournament not found: ${args.where.id}`);
+      const next: TournamentRow = { ...row, ...args.data, updatedAt: new Date() };
+      this.tournaments.set(row.id, next);
+      return next;
+    },
+  };
+
+  tournamentEntry = {
+    create: async (args: {
+      data: Partial<TournamentEntryRow> & {
+        id?: string;
+        tournamentId: string;
+        captainUserId: string;
+        teamName: string;
+      };
+    }): Promise<TournamentEntryRow> => {
+      const dup = this.tournamentEntries.find(
+        (e) =>
+          e.tournamentId === args.data.tournamentId &&
+          e.captainUserId === args.data.captainUserId,
+      );
+      if (dup) {
+        const err = new Error('Unique constraint failed') as Error & { code?: string };
+        err.code = 'P2002';
+        throw err;
+      }
+      const row: TournamentEntryRow = {
+        id: args.data.id ?? this.nextId(),
+        tournamentId: args.data.tournamentId,
+        captainUserId: args.data.captainUserId,
+        partnerUserId: args.data.partnerUserId ?? null,
+        teamName: args.data.teamName,
+        seed: args.data.seed ?? null,
+        status: args.data.status ?? 'PENDING',
+        registeredAt: args.data.registeredAt ?? new Date(),
+        withdrawnAt: args.data.withdrawnAt ?? null,
+      };
+      this.tournamentEntries.push(row);
+      return row;
+    },
+
+    update: async (args: {
+      where: { id: string };
+      data: Partial<TournamentEntryRow>;
+    }): Promise<TournamentEntryRow> => {
+      const idx = this.tournamentEntries.findIndex((e) => e.id === args.where.id);
+      if (idx < 0) throw new Error(`tournamentEntry not found: ${args.where.id}`);
+      const merged: TournamentEntryRow = { ...this.tournamentEntries[idx]!, ...args.data };
+      this.tournamentEntries[idx] = merged;
+      return merged;
+    },
+
+    findMany: async (args: {
+      where?: { tournamentId?: string; status?: TournamentEntryRow['status'] };
+      orderBy?: Record<string, 'asc' | 'desc'>;
+    }): Promise<TournamentEntryRow[]> => {
+      let rows = [...this.tournamentEntries];
+      if (args.where?.tournamentId)
+        rows = rows.filter((e) => e.tournamentId === args.where!.tournamentId);
+      if (args.where?.status) rows = rows.filter((e) => e.status === args.where!.status);
+      if (args.orderBy) {
+        const [k, dir] = Object.entries(args.orderBy)[0]!;
+        rows.sort((a, b) => {
+          const va = (a as unknown as Record<string, unknown>)[k] as Date | number | string;
+          const vb = (b as unknown as Record<string, unknown>)[k] as Date | number | string;
+          const na = va instanceof Date ? +va : va;
+          const nb = vb instanceof Date ? +vb : vb;
+          if (na < nb) return dir === 'asc' ? -1 : 1;
+          if (na > nb) return dir === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
+      return rows;
+    },
+  };
+
+  tournamentRound = {
+    create: async (args: {
+      data: Partial<TournamentRoundRow> & {
+        id?: string;
+        tournamentId: string;
+        roundIndex: number;
+      };
+    }): Promise<TournamentRoundRow> => {
+      const dup = this.tournamentRounds.find(
+        (r) =>
+          r.tournamentId === args.data.tournamentId &&
+          r.roundIndex === args.data.roundIndex,
+      );
+      if (dup) {
+        const err = new Error('Unique constraint failed') as Error & { code?: string };
+        err.code = 'P2002';
+        throw err;
+      }
+      const row: TournamentRoundRow = {
+        id: args.data.id ?? this.nextId(),
+        tournamentId: args.data.tournamentId,
+        roundIndex: args.data.roundIndex,
+        name: args.data.name ?? null,
+        startedAt: args.data.startedAt ?? null,
+        finishedAt: args.data.finishedAt ?? null,
+      };
+      this.tournamentRounds.push(row);
+      return row;
+    },
+
+    findMany: async (args: {
+      where?: { tournamentId?: string };
+      orderBy?: Record<string, 'asc' | 'desc'>;
+    }): Promise<TournamentRoundRow[]> => {
+      let rows = [...this.tournamentRounds];
+      if (args.where?.tournamentId)
+        rows = rows.filter((r) => r.tournamentId === args.where!.tournamentId);
+      if (args.orderBy) {
+        const [k, dir] = Object.entries(args.orderBy)[0]!;
+        rows.sort((a, b) => {
+          const va = (a as unknown as Record<string, unknown>)[k] as number;
+          const vb = (b as unknown as Record<string, unknown>)[k] as number;
+          if (va < vb) return dir === 'asc' ? -1 : 1;
+          if (va > vb) return dir === 'asc' ? 1 : -1;
+          return 0;
+        });
+      }
       return rows;
     },
   };

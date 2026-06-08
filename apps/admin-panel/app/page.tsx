@@ -5,6 +5,7 @@ export default function AdminHome() {
       <p>骨架页面 — Phase 3 接入用户管理 / 举报 / 封禁 / 赛事配置。</p>
       <nav style={{ marginTop: 16, display: 'flex', gap: 12 }}>
         <a href="/referee">裁判审计</a>
+        <a href="/tournaments">赛事管理</a>
       </nav>
     </main>
   );

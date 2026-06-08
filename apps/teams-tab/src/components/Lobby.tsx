@@ -139,6 +139,7 @@ export function Lobby() {
       <nav style={{ marginTop: 12, display: 'flex', gap: 12, fontSize: 14 }}>
         <a href="/profile">我的战绩</a>
         <a href="/leaderboard">排行榜</a>
+        <a href="/tournaments">赛事大厅</a>
       </nav>
 
       <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

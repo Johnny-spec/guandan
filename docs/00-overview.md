@@ -85,3 +85,14 @@
 - 明确 icon (192/32) / screenshot (1366×768) / validDomains / `webApplicationInfo` / Publisher Attestation 等 Microsoft Teams Store 审核硬性规格。
 - 列出 Phase 4 Sprint 2 衍生 lane：GDPR DSR `/admin/v1/users/:aad/erase`、`docs/legal/{privacy,terms}.md` 全文。
 - Phase 4 Sprint 1 看板仅余 `Tournament 报名 UI` 一项。
+## 2026-06-08 16:33 自动迭代 · Phase 4 Sprint 1 · Tournament 报名 UI（Sprint 收官）
+
+- **admin-panel**：
+  - `/tournaments`：赛事列表 + 创建表单（name/host/format/maxTeams/startLevel/description）+ 状态筛选。
+  - `/tournaments/[id]`：详情、生命周期按钮（open/close/start/finish/cancel，按 status 自动 enable/disable）、报名队伍表（confirm/withdraw/kick）。
+- **teams-tab**：
+  - `/tournaments`：赛事大厅，仅展示 `status=OPEN` 的赛事卡片。
+  - `/tournaments/[id]`：报名页 — 自动以 `useAuthStore.userId` 作为 captain；填写队名 + 可选队友 userId；展示我的报名状态 / 退赛按钮；容量满 / 状态非 OPEN 时禁用提交。
+- admin-panel 首页与 teams-tab Lobby 加入导航入口。
+- 全仓 `pnpm typecheck` 9/9 green；两个 Next.js 应用 `build` 通过；测试维持 312 green。
+- **Phase 4 Sprint 1 收官** ✅ — 看板全部 lane 已完成（赛事数据模型 → REST → Bracket → PrismaTournamentRepository → 报名 UI → Guild 数据模型 → AppSource 上架清单）。

@@ -79,3 +79,9 @@
 - `GuildService` 完整业务：OWNER/ADMIN/MEMBER 角色鉴权、`APPROVAL`/`OPEN`/`INVITE_ONLY` 三种入会策略、`request/invite/approve/kick/leave/promote/disband` 全生命周期、Owner 保护（不可被踢/离开/降级）。
 - 暴露 REST `/api/v1/guilds` 与 `/api/v1/guild-memberships`，错误码经 `wrap()` 映射为 HTTP 状态。
 - `GuildModule` 接入 `AppModule`；新增 18 条服务单测，全仓库 312 green。
+## 2026-06-08 14:33 自动迭代 · Phase 4 Sprint 1 · AppSource 上架准备清单
+
+- 新增 `docs/11-appsource-submission.md`，覆盖 8 节：资产清单、Manifest 审核、合规与安全审查、隐私声明骨架、服务条款骨架、提交前 Smoke Test、Partner Center 提交 Run Book、Sign-off 模板。
+- 明确 icon (192/32) / screenshot (1366×768) / validDomains / `webApplicationInfo` / Publisher Attestation 等 Microsoft Teams Store 审核硬性规格。
+- 列出 Phase 4 Sprint 2 衍生 lane：GDPR DSR `/admin/v1/users/:aad/erase`、`docs/legal/{privacy,terms}.md` 全文。
+- Phase 4 Sprint 1 看板仅余 `Tournament 报名 UI` 一项。

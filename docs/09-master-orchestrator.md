@@ -171,7 +171,7 @@ gantt
 | Tournament 报名 UI（admin-panel 创建 + teams-tab 报名） | Frontend | ⏳ Todo |
 | Guild / 公会 数据模型 | Database | ✅ Done（Prisma Guild + GuildMembership + 2 enums + 迁移；InMemoryGuildRepository（name/tag 唯一、容量校验）；GuildService（OWNER/ADMIN/MEMBER RBAC + APPROVAL/OPEN/INVITE_ONLY 三种入会策略 + request/invite/approve/kick/leave/promote/disband 全生命周期 + Owner 保护）；REST `/api/v1/guilds` & `/api/v1/guild-memberships`；GuildModule 接入 AppModule；18 service tests / 312 green） |
 | PrismaTournamentRepository（异步孪生 + FakePrismaClient 扩展） | Database/Server | ✅ Done（`prisma.tournament.repository.ts`：AsyncTournamentRepository 接口 + Prisma 实现，P2002→duplicate captain/round 错误映射，RUNNING/FINISHED/CANCELLED 自动 stamp 时间戳；FakePrismaClient 新增 tournament/tournamentEntry/tournamentRound 三张表 + 唯一性模拟；+11 集成测试 / 293 green） |
-| AppSource 上架准备清单（manifest 审核 / 隐私声明） | DevOps | ⏳ Todo |
+| AppSource 上架准备清单（manifest 审核 / 隐私声明） | DevOps | ✅ Done（`docs/11-appsource-submission.md`：8 节清单 — 资产清单 / Manifest 审核 / 合规与安全审查 / 隐私声明骨架 / 服务条款骨架 / Smoke Test 流程 / 提交 Run Book / Sign-off 模板，含具体规格（icon 192/32px、screenshot 1366×768、validDomains 清理、AAD SSO `webApplicationInfo`、Publisher Attestation 选项）与三方签字门控） |
 
 > 实际看板用 GitHub Projects / Issues 维护；本表仅给 Agent 协作时一个统一参考点。
 

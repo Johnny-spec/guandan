@@ -4,6 +4,7 @@ import { MatchModule } from './match/match.module.js';
 import { ReplayModule } from './replay/replay.module.js';
 import { RefereeModule } from './referee/referee.module.js';
 import { TournamentModule } from './tournament/tournament.module.js';
+import { GuildModule } from './guild/guild.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { HealthController } from './health.controller.js';
 
@@ -14,6 +15,7 @@ import { HealthController } from './health.controller.js';
     ReplayModule,
     RefereeModule,
     TournamentModule,
+    GuildModule,
     GameModule,
   ],
   controllers: [HealthController],

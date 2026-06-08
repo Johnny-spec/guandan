@@ -70,3 +70,12 @@
 - [x] **Phase 4 · Sprint 1（Bracket 单淘汰配对算法）** — `apps/game-server/src/tournament/bracket.ts`：纯函数 `generateSingleEliminationBracket(entries)` 返回全轮次预生成 `Bracket`；`standardSeedOrder(slotCount)` 递归构造标准 bracket 种子顺序（slotCount=8 → [1,8,4,5,2,7,3,6]，保证 1 号种子和 2 号种子在不同半区）；非 2 的幂次报名时把差额补成 bye 槽位并由顶部 seed 占用，bye 一侧自动 `preDeterminedWinner='A'`；seed 缺失/重复按 `registeredAt` 兜底排名；后续轮次用 `{kind:'winner_of', matchId}` 占位等待回填。+11 单元测试（2/4/5/8 队 + bye + seed 缺失），共 266/266（17 + 8 + 55 + 186）。
 
 - 2026-06-08 自动迭代：PrismaTournamentRepository（异步孪生）落地。AsyncTournamentRepository 接口 + Prisma 实现镜像 InMemory 行为；P2002 唯一约束冲突映射为 "duplicate captain" / "round already exists" 错误；状态迁移自动 stamp startedAt/finishedAt。FakePrismaClient 新增 tournament/tournamentEntry/tournamentRound 三张表 + 唯一性模拟。+11 集成测试（293 green：213 server + 55 engine + 8 sdk + 17 cards）。
+
+## 2026-06-08 自动迭代 · Phase 4 Sprint 1 · Guild (公会) 数据模型
+
+- Prisma schema 追加 `Guild` + `GuildMembership` 模型，新增 `GuildRole` / `GuildMembershipStatus` 枚举；User 模型补 `guildsOwned` / `guildMemberships` 反向关系。
+- 迁移 `20260608000000_guild` 落地基线 DDL（公会与成员表、唯一索引、级联约束）。
+- `InMemoryGuildRepository` 提供名称/标签唯一性与 `maxMembers` 容量校验。
+- `GuildService` 完整业务：OWNER/ADMIN/MEMBER 角色鉴权、`APPROVAL`/`OPEN`/`INVITE_ONLY` 三种入会策略、`request/invite/approve/kick/leave/promote/disband` 全生命周期、Owner 保护（不可被踢/离开/降级）。
+- 暴露 REST `/api/v1/guilds` 与 `/api/v1/guild-memberships`，错误码经 `wrap()` 映射为 HTTP 状态。
+- `GuildModule` 接入 `AppModule`；新增 18 条服务单测，全仓库 312 green。

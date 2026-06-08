@@ -169,7 +169,7 @@ gantt
 | Tournament REST API（CRUD + 报名 + 提交） | Server | ✅ Done（service + controller + 16 tests / 282 green） |
 | Bracket 单淘汰配对算法（seed 排序 + bye 处理） | Server | ✅ Done (`apps/game-server/src/tournament/bracket.ts`：纯函数 `generateSingleEliminationBracket(entries)` → 全轮次预生成 Bracket；`standardSeedOrder(2^N)` 递归构造（1 号种子和 2 号种子在不同半区）；非 2 的幂次报名按"补齐到下一 2 的幂次"原则给顶部 seed 派 bye，bye 侧自动 `preDeterminedWinner`；seed 缺失/重复时按 registeredAt 兜底；后续轮次用 `winner_of: matchId` 占位等待回填。+11 测试) |
 | Tournament 报名 UI（admin-panel 创建 + teams-tab 报名） | Frontend | ⏳ Todo |
-| Guild / 公会 数据模型 | Database | ⏳ Todo |
+| Guild / 公会 数据模型 | Database | ✅ Done（Prisma Guild + GuildMembership + 2 enums + 迁移；InMemoryGuildRepository（name/tag 唯一、容量校验）；GuildService（OWNER/ADMIN/MEMBER RBAC + APPROVAL/OPEN/INVITE_ONLY 三种入会策略 + request/invite/approve/kick/leave/promote/disband 全生命周期 + Owner 保护）；REST `/api/v1/guilds` & `/api/v1/guild-memberships`；GuildModule 接入 AppModule；18 service tests / 312 green） |
 | PrismaTournamentRepository（异步孪生 + FakePrismaClient 扩展） | Database/Server | ✅ Done（`prisma.tournament.repository.ts`：AsyncTournamentRepository 接口 + Prisma 实现，P2002→duplicate captain/round 错误映射，RUNNING/FINISHED/CANCELLED 自动 stamp 时间戳；FakePrismaClient 新增 tournament/tournamentEntry/tournamentRound 三张表 + 唯一性模拟；+11 集成测试 / 293 green） |
 | AppSource 上架准备清单（manifest 审核 / 隐私声明） | DevOps | ⏳ Todo |
 

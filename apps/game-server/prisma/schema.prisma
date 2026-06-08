@@ -80,6 +80,8 @@ model User {
   notifications     Notification[]
   tournamentEntries TournamentEntry[]
   tournamentsHosted Tournament[]      @relation("TournamentHost")
+  guildsOwned       Guild[]           @relation("GuildOwner")
+  guildMemberships  GuildMembership[]
 
   @@index([tierId, rating(sort: Desc)])
   @@index([tenantId, status])
@@ -602,4 +604,65 @@ model TournamentRound {
 
   @@unique([tournamentId, roundIndex])
   @@map("tournament_rounds")
+}
+
+// -----------------------------------------------------------------------------
+// 14. 公会 / Guild 系统 (Phase 4 Sprint 1)
+// -----------------------------------------------------------------------------
+
+enum GuildRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum GuildMembershipStatus {
+  PENDING   // 申请中
+  ACTIVE    // 在会
+  LEFT      // 已退会
+  KICKED    // 被踢
+}
+
+/// 公会主表。掼蛋玩家自发组建的长期组织，比 Tournament 更持久。
+/// 后续 Sprint 加：公会赛事 / 公会内积分 / 公会公告。
+model Guild {
+  id           String   @id @default(cuid())
+  name         String   @unique // 全平台公会名唯一
+  tag          String?  @unique // 简短 tag（4-6 字符），显示在玩家名后
+  ownerUserId  String
+  description  String?
+  /// 公会容量上限（含 owner / admin）
+  maxMembers   Int      @default(50)
+  /// 入会是否需要审批；false 时自动 ACTIVE
+  joinPolicy   String   @default("APPROVAL") // APPROVAL | OPEN | INVITE_ONLY
+  tenantId     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  disbandedAt  DateTime?
+
+  owner   User              @relation("GuildOwner", fields: [ownerUserId], references: [id])
+  members GuildMembership[]
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("guilds")
+}
+
+/// 公会成员关系。同一 user 在同一 guild 只能有一条活跃记录
+/// （LEFT / KICKED 不算活跃，可重新申请）。
+model GuildMembership {
+  id        String                @id @default(cuid())
+  guildId   String
+  userId    String
+  role      GuildRole             @default(MEMBER)
+  status    GuildMembershipStatus @default(PENDING)
+  joinedAt  DateTime              @default(now())
+  leftAt    DateTime?
+
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, userId])
+  @@index([guildId, status])
+  @@index([userId, status])
+  @@map("guild_memberships")
 }

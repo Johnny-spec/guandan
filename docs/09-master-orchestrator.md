@@ -166,7 +166,7 @@ gantt
 | Lane | Owner | 状态 |
 | --- | --- | --- |
 | Tournament 数据模型 + 报名（schema + InMemory 仓储） | Database/Server | ✅ Done (`schema.prisma` 新增 `Tournament` / `TournamentEntry` / `TournamentRound` + 3 个枚举 + User 双向关系；`prisma/migrations/20260606000000_tournament/migration.sql` 手写 DDL；`apps/game-server/src/tournament/`：`TournamentRepository` 接口 + `InMemoryTournamentRepository`（队长唯一性 + maxTeams 容量校验 + 状态迁移自动 stamp startedAt/finishedAt）+ `TournamentModule` 接入 AppModule；+8 测试) |
-| Tournament REST API（CRUD + 报名 + 提交） | Server | ⏳ Todo |
+| Tournament REST API（CRUD + 报名 + 提交） | Server | ✅ Done（service + controller + 16 tests / 282 green） |
 | Bracket 单淘汰配对算法（seed 排序 + bye 处理） | Server | ✅ Done (`apps/game-server/src/tournament/bracket.ts`：纯函数 `generateSingleEliminationBracket(entries)` → 全轮次预生成 Bracket；`standardSeedOrder(2^N)` 递归构造（1 号种子和 2 号种子在不同半区）；非 2 的幂次报名按"补齐到下一 2 的幂次"原则给顶部 seed 派 bye，bye 侧自动 `preDeterminedWinner`；seed 缺失/重复时按 registeredAt 兜底；后续轮次用 `winner_of: matchId` 占位等待回填。+11 测试) |
 | Tournament 报名 UI（admin-panel 创建 + teams-tab 报名） | Frontend | ⏳ Todo |
 | Guild / 公会 数据模型 | Database | ⏳ Todo |

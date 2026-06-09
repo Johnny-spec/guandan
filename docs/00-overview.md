@@ -101,3 +101,11 @@
 - 2026-06-09 06:36 · Phase 4 Sprint 2 · GDPR DSR /api/v1/admin/users/:userId/erase 落地（UserPiiSink 端口 + InMemoryUserPiiSink 参考实现 + EraseService 幂等审计 + AdminController REST + AdminModule 接入 AppModule；FNV-1a shortHash 生成确定性 pseudonym，user/entries/memberships 三路匿名化，every-request audit；+11 测试 / 357 green）。
 
 - 2026-06-09 08:35 · Phase 4 Sprint 2 · Tournament 自动开局调度落地（TournamentScheduler：deadline/maxTeams 双触发 → AUTO_START / AUTO_CANCEL，Clock 可注入，OnModuleInit setInterval 默认 30s 可关闭，ring buffer 审计；新 REST scheduler/tick & scheduler/recent；+12 测试 / 369 green）。
+
+## 2026-06-09 10:39 · Phase 4 Sprint 2 · Guild 频道/活动（基础）
+- 仓库：pps/game-server/src/guild/guild-activity.{repository,service,controller}.ts 新增 + guild.module.ts 接入。
+- 数据层：GuildChannelRecord / GuildEventRecord / GuildEventRsvpRecord + InMemory 实现，RSVP (eventId,userId) 幂等 upsert。
+- 业务层：RBAC（OWNER+ADMIN 建 channel/event，host 可 cancel，ACTIVE 成员可 RSVP/list），名称正则 + ACTIVE 大小写去重，GOING 容量校验（排除自身），DISBANDED 阻断 (GUILD_DISBANDED)。
+- REST：三个控制器避免路由冲突（/guilds/:guildId/{channels,events} GET/POST、/guild-channels/:channelId/archive、/guild-events/:eventId/{cancel,rsvp,rsvps}）。
+- 测试：+22（22 channels+events+RSVPs 场景含 capacity 释放、CANCELLED 拒收、404 码 等）→ 全仓 391 green（311 server + 55 engine + 17 cards + 8 sdk）。
+- 收尾：Sprint 2 三条 lane（auto-start scheduler / GDPR erase / Guild 频道·活动）全部 ✅；下次 tick 进入 Sprint 3。

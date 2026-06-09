@@ -15,6 +15,7 @@ import {
   type RegisterEntryInput,
 } from './tournament.service.js';
 import type { EntryStatus, TournamentStatus } from './tournament.repository.js';
+import { TournamentScheduler } from './tournament.scheduler.js';
 
 function wrap<T>(fn: () => T) {
   try {
@@ -29,7 +30,20 @@ function wrap<T>(fn: () => T) {
 
 @Controller('api/v1/tournaments')
 export class TournamentController {
-  constructor(@Inject(TournamentService) private readonly svc: TournamentService) {}
+  constructor(
+    @Inject(TournamentService) private readonly svc: TournamentService,
+    @Inject(TournamentScheduler) private readonly scheduler: TournamentScheduler,
+  ) {}
+
+  @Post('scheduler/tick')
+  tickScheduler() {
+    return wrap(() => this.scheduler.tickOnce());
+  }
+
+  @Get('scheduler/recent')
+  recentScheduler(@Query('limit') limit?: string) {
+    return wrap(() => this.scheduler.recentActions(limit ? Number(limit) : undefined));
+  }
 
   @Get()
   list(@Query('status') status?: string, @Query('hostUserId') hostUserId?: string) {
